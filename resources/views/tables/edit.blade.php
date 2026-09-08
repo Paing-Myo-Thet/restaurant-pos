@@ -1,0 +1,90 @@
+<x-app-layout>
+
+    <div class="mx-auto max-w-3xl space-y-6">
+
+        {{-- Form --}}
+        <div class="rounded-lg bg-white p-6 shadow">
+
+            <form action="{{ route('tables.update', $table) }}" method="POST" class="space-y-6">
+
+                @csrf
+                @method('put')
+
+                {{-- Table Name --}}
+                <div>
+                    <label for="name" class="block text-sm font-medium text-gray-700">
+                        Table Name
+                    </label>
+
+                    <input type="text" name="name" id="name" value="{{ old('name' , $table->name) }}" placeholder="e.g. Table 1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+
+                    @error('name')
+                    <p class="mt-1 text-sm text-red-600">
+                        {{ $message }}
+                    </p>
+                    @enderror
+                </div>
+
+
+                {{-- Capacity --}}
+                <div>
+                    <label for="capacity" class="block text-sm font-medium text-gray-700">
+                        Capacity
+                    </label>
+
+                    <input type="number" name="capacity" id="capacity" value="{{ old('capacity', $table->capacity)  }}" min="1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+
+                    @error('capacity')
+                    <p class="mt-1 text-sm text-red-600">
+                        {{ $message }}
+                    </p>
+                    @enderror
+                </div>
+
+
+                {{-- Status --}}
+                <div>
+                    <label for="status" class="block text-sm font-medium text-gray-700">
+                        Status
+                    </label>
+
+                    <select name="status" id="status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="available" @selected(old('status', $table->status) == 'available')>
+                            available
+                        </option>
+                        <option value='occupied' @selected(old('status', $table->status) == 'occupied')>
+                            Occupied
+                        </option>
+                        <option value='reserved' @selected(old('status', $table->status) == 'reserved')>
+                            Reserved
+                        </option>
+                    </select>
+
+                    @error('status')
+                    <p class="mt-1 text-sm text-red-600">
+                        {{ $message }}
+                    </p>
+                    @enderror
+                </div>
+
+
+                {{-- Buttons --}}
+                <div class="flex items-center justify-end gap-3">
+
+                    <a href="{{ route('tables.index') }}" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                        Cancel
+                    </a>
+
+                    <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+                        Update Table
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</x-app-layout>
