@@ -60,15 +60,15 @@
                     </label>
 
                     <select name="status" id="status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                        <option value="available" {{ old('status', 'available') === 'available' ? 'selected' : '' }}>
+                        <option value="available" @selected{{ old('status', 'available') === 'available' }}>
                             available
                         </option>
 
-                        <option value="occupied" {{ old('status') === 'occupied' ? 'selected' : '' }}>
+                        <option value="occupied" @selected{{ old('status') === 'occupied'}}>
                             Occupied
                         </option>
 
-                        <option value="reserved" {{ old('status') === 'reserved' ? 'selected' : '' }}>
+                        <option value="reserved" @selected{{ old('status') === 'reserved' }}>
                             Reserved
                         </option>
                     </select>
