@@ -24,7 +24,7 @@
                         Name
                     </label>
 
-                    <input type="text" name="name" class="mt-1 block w-full rounded-lg border-gray-300" placeholder="Enter name">
+                    <input type="text" name="name" value="{{old('name')}}" class="mt-1 block w-full rounded-lg border-gray-300" placeholder="Enter name">
 
                     @error('name')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -39,7 +39,7 @@
                         Email
                     </label>
 
-                    <input type="email" name="email" class="mt-1 block w-full rounded-lg
+                    <input type="email" name="email" value="{{old('email')}}" class="mt-1 block w-full rounded-lg
                      border-gray-300" placeholder="Enter email">
 
                     @error('email')
@@ -54,7 +54,7 @@
                         Password
                     </label>
 
-                    <input type="password" name="password" class="mt-1 block w-full rounded-lg
+                    <input type="password" name="password" value="{{old('password')}}" class="mt-1 block w-full rounded-lg
                      border-gray-300" placeholder="Enter password">
 
                     @error('password')

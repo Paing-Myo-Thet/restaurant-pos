@@ -8,23 +8,35 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\TableController;
+use App\Http\Controllers\SaleController;
 
 Route::get('/', function () {
     return redirect()->route('dashboard');
 });
 
-Route::get('/dashboard',[DashboardController::class, 'index'] )->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard',[DashboardController::class, 'index'])
+    ->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::resource('users', UserController::class)
-->middleware('role:admin');
+    ->middleware('role:admin');
+
 Route::resource('categories', CategoryController::class)
-->middleware('role:admin');
+    ->middleware('role:admin');
+
 Route::resource('products', ProductController::class)
-->middleware('role:admin');
+    ->middleware('role:admin');
+
 Route::resource('customers', CustomerController::class)
-->middleware('role:admin');
+    ->middleware('role:admin');
+
 Route::resource('tables', TableController::class)
-->middleware(['auth', 'role:admin,waiter']);
+    ->middleware(['auth', 'role:admin,waiter']);
+    
+Route::resource('sales', SaleController::class);
+
+Route::patch('/sales/{sale}/status', [SaleController::class, 'updateStatus'])
+    ->middleware(['auth', 'role:admin,cashier,waiter,kitchen'])
+    ->name('sales.updateStatus');
 
 
 Route::middleware('auth')->group(function () {

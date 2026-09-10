@@ -13,6 +13,7 @@
             </p>
         </div>
 
+
         {{-- Form --}}
         <div class="rounded-lg bg-white p-6 shadow">
 
@@ -52,15 +53,19 @@
 
                 {{-- Status --}}
                 <div class="mb-6">
-                    <label class="flex items-center gap-2">
-
-                        <input type="checkbox" name="status" value="1" checked class="rounded border-gray-300 text-red-600 focus:ring-red-500">
-
-                        <span class="text-sm text-gray-700">
-                            Active
-                        </span>
-
+                    <label class="mb-1 block text-sm font-medium text-gray-700">
+                        Status
                     </label>
+
+                    <select name="status" class="w-full rounded-lg border-gray-300">
+                        <option value="1">Active</option>
+                        <option value="0">Inactive</option>
+                    </select>
+                    @error('status')
+                    <p class="mt-1 text-sm text-red-600">
+                        {{ $message }}
+                    </p>
+                    @enderror
                 </div>
 
                 {{-- Buttons --}}

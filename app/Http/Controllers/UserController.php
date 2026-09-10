@@ -81,7 +81,7 @@ public function destroy(User $user) {
     
     return redirect()
     ->route('users.index')
-    ->with('success', 'User deleted successfully');
+    ->with('dl-success', 'User deleted successfully');
 }
     
 }

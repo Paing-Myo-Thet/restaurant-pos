@@ -1,12 +1,20 @@
 <x-app-layout>
 
     <div class="space-y-6">
-        @if(session('success'))
-        <div class="bg-green-300 text-green-600 text-bold rounded mt-2 p-3">
-            {{session('success')}}
+
+        @if(session('dl-success'))
+
+        <div class="bg-red-400 text-white text-bold rounded mt-2 p-3">
+            {{session('dl-success')}}
         </div>
 
-        @else
+        @endif
+
+        @if(session('success'))
+
+        <div class="bg-green-400 text-white text-bold rounded mt-2 p-3">
+            {{session('success')}}
+        </div>
 
         @endif
         {{-- Page Header --}}

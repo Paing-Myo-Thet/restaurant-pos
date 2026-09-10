@@ -39,7 +39,7 @@
                 </a>
 
                 {{-- Orders --}}
-                <a href="#" class="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-300
+                <a href="{{route('sales.index')}}" class="flex items-center gap-3 rounded-lg px-4 py-3 text-gray-300
                   transition hover:bg-gray-800 hover:text-white">
 
                     <span>🧾</span>

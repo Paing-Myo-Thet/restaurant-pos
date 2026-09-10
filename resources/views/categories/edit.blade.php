@@ -53,15 +53,16 @@
 
                 {{-- Status --}}
                 <div class="mb-6">
-                    <label class="flex items-center gap-2">
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-gray-700">
+                            Status
+                        </label>
 
-                        <input type="checkbox" name="status" value="1" {{ old('status', $category->status) ? 'checked' : '' }} class="rounded border-gray-300 text-red-600 focus:ring-red-500">
-
-                        <span class="text-sm text-gray-700">
-                            Active
-                        </span>
-
-                    </label>
+                        <select name="status" class="w-full rounded-lg border-gray-300">
+                            <option value="1" @selected(old('status', $category->status)== 1)>Active</option>
+                            <option value="0" @selected(old('status', $category->status)== 0)>Inactive</option>
+                        </select>
+                    </div>
                 </div>
 
                 {{-- Buttons --}}
