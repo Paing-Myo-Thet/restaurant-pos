@@ -315,7 +315,7 @@
 
                 row.innerHTML = `
                 <td class="py-2">
-                    ${item.name}
+                    <span class="item-name"></span>
 
                     <input
                         type="hidden"
@@ -374,6 +374,8 @@
 
                 </td>
             `;
+
+                row.querySelector('.item-name').textContent = item.name;
 
                 orderItems.appendChild(row);
             });
