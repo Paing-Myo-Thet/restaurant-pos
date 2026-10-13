@@ -18,12 +18,6 @@
                 + Add Category
             </a>
         </div>
-        {{-- Success Message --}}
-        @if(session('success'))
-        <div class="rounded-lg bg-green-100 px-4 py-3 text-green-700">
-            {{ session('success') }}
-        </div>
-        @endif
 
         {{-- Categories Table --}}
         <div class="overflow-hidden rounded-lg bg-white shadow">

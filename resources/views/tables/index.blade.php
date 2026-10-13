@@ -20,12 +20,6 @@
         </div>
 
 
-        {{-- Success Message --}}
-        @if (session('success'))
-        <div class="rounded-lg bg-green-100 px-4 py-3 text-green-700">
-            {{ session('success') }}
-        </div>
-        @endif
 
 
         {{-- Tables --}}
