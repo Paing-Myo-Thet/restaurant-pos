@@ -12,45 +12,53 @@ use App\Http\Controllers\SaleController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\StockMovementController;
 use App\Http\Controllers\HelloController;
+use App\Http\Controllers\KitchenController;
 
 Route::get('/', function () {
     return redirect()->route('dashboard');
 });
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->middleware('verified')->name('dashboard');
 
     Route::resource('tables', TableController::class)
+        ->except('show')
         ->middleware('role:admin,waiter');
 
+    Route::get('/kitchen', [KitchenController::class, 'index'])
+        ->middleware('role:admin,kitchen')
+        ->name('kitchen.index');
+
     // Registered before index/show so /sales/create and /sales/today
-    // aren't captured by /sales/{sale}.
+    // aren't captured by /sales/{sale}. Orders are cancelled, never deleted.
     Route::resource('sales', SaleController::class)
-        ->except(['index', 'show'])
+        ->only(['create', 'store', 'edit', 'update'])
         ->middleware('role:admin,cashier,waiter');
 
-    Route::get('/sales/today', [SaleController::class, 'today'])
-        ->middleware('role:admin,cashier,waiter')
-        ->name('sales.today');
+    Route::middleware('role:admin,cashier,waiter')->group(function () {
+        Route::get('/sales/today', [SaleController::class, 'today'])->name('sales.today');
+        Route::get('/sales/{sale}/receipt', [SaleController::class, 'receipt'])->name('sales.receipt');
+    });
 
     Route::resource('sales', SaleController::class)
         ->only(['index', 'show'])
         ->middleware('role:admin,cashier,waiter,kitchen');
 
+    // Which status changes each role may make is checked per transition in Sale::TRANSITIONS.
     Route::patch('/sales/{sale}/status', [SaleController::class, 'updateStatus'])
         ->middleware('role:admin,cashier,waiter,kitchen')
         ->name('sales.status');
 
-    Route::patch('/sales/{sale}/payment', [SaleController::class, 'markAsPaid'])
+    Route::post('/sales/{sale}/checkout', [SaleController::class, 'checkout'])
         ->middleware('role:admin,cashier')
-        ->name('sales.markAsPaid');
+        ->name('sales.checkout');
 
     Route::middleware('role:admin')->group(function () {
-        Route::resource('users', UserController::class);
-        Route::resource('categories', CategoryController::class);
-        Route::resource('products', ProductController::class);
-        Route::resource('customers', CustomerController::class);
+        Route::resource('users', UserController::class)->except('show');
+        Route::resource('categories', CategoryController::class)->except('show');
+        Route::resource('products', ProductController::class)->except('show');
+        Route::resource('customers', CustomerController::class)->except('show');
 
         Route::get('/stock-movements', [StockMovementController::class, 'index'])
             ->name('stock-movements.index');
