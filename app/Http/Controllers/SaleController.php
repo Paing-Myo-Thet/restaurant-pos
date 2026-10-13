@@ -144,11 +144,21 @@ class SaleController extends Controller
             ->with('print_receipt', true);
     }
 
-    public function receipt(Sale $sale): View
+    public function receipt(Sale $sale): View|RedirectResponse
     {
+        if (! $sale->canBePrintedBy(auth()->user())) {
+            return redirect()
+                ->route('sales.show', $sale)
+                ->with('error', 'The bill can be printed once the order has been served.');
+        }
+
         $sale->load(['customer', 'table', 'user', 'items']);
 
-        return view('sales.receipt', compact('sale'));
+        return view('sales.receipt', [
+            'sale' => $sale,
+            // Waiters can print a copy for the table, but only the cashier issues the real receipt.
+            'isDraft' => auth()->user()->hasRole('waiter'),
+        ]);
     }
 
     private function validateOrder(Request $request, ?Sale $sale = null): array

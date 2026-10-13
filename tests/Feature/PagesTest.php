@@ -40,7 +40,8 @@ function pagesFor(Sale $sale): array
 $access = [
     'admin' => ['*'],
     'cashier' => ['dashboard', 'orders', 'orders filtered', 'today', 'new order', 'order', 'edit order', 'receipt'],
-    'waiter' => ['dashboard', 'orders', 'orders filtered', 'today', 'new order', 'order', 'edit order', 'receipt', 'tables'],
+    // The sample order is still in the kitchen, so waiters can't print it yet.
+    'waiter' => ['dashboard', 'orders', 'orders filtered', 'today', 'new order', 'order', 'edit order', 'tables'],
     'kitchen' => ['orders', 'orders filtered', 'order', 'kitchen'],
 ];
 
