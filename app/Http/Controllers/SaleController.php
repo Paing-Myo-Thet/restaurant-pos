@@ -144,8 +144,14 @@ class SaleController extends Controller
             ->with('print_receipt', true);
     }
 
-    public function receipt(Sale $sale): View
+    public function receipt(Sale $sale): View|RedirectResponse
     {
+        if (! $sale->canBePrintedBy(auth()->user())) {
+            return redirect()
+                ->route('sales.show', $sale)
+                ->with('error', 'The bill can be printed once the order has been served.');
+        }
+
         $sale->load(['customer', 'table', 'user', 'items']);
 
         return view('sales.receipt', [

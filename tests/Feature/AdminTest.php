@@ -147,9 +147,37 @@ test('the receipt shows the payment and change', function () {
         ->assertSee('Change');
 });
 
-test('a waiter printout is watermarked as a draft, even after payment', function () {
+test('waiters can print the bill only once the order is served', function () {
+    $kitchen = User::factory()->role('kitchen')->create();
     $product = Product::factory()->create(['price' => 2500]);
     $sale = $this->orders->create(['items' => [['product_id' => $product->id, 'quantity' => 1]]], $this->waiter);
+
+    $this->actingAs($this->waiter)->get(route('sales.show', $sale))
+        ->assertDontSee('Print draft bill')
+        ->assertSee('Bill available once served');
+    $this->actingAs($this->waiter)->get(route('sales.receipt', $sale))
+        ->assertRedirect(route('sales.show', $sale))
+        ->assertSessionHas('error');
+
+    // Cashiers can still print before the food is served, e.g. for takeaway.
+    $this->actingAs(User::factory()->role('cashier')->create())->get(route('sales.receipt', $sale))->assertOk();
+
+    $this->orders->changeStatus($sale, 'sent', $this->waiter);
+    $this->orders->changeStatus($sale, 'preparing', $kitchen);
+    $this->orders->changeStatus($sale, 'ready', $kitchen);
+    $this->orders->changeStatus($sale, 'served', $this->waiter);
+
+    $this->actingAs($this->waiter)->get(route('sales.show', $sale))->assertSee('Print draft bill');
+    $this->actingAs($this->waiter)->get(route('sales.receipt', $sale))->assertOk();
+});
+
+test('a waiter printout is watermarked as a draft, even after payment', function () {
+    $kitchen = User::factory()->role('kitchen')->create();
+    $product = Product::factory()->create(['price' => 2500]);
+    $sale = $this->orders->create(['items' => [['product_id' => $product->id, 'quantity' => 1]]], $this->waiter);
+    foreach ([['sent', $this->waiter], ['preparing', $kitchen], ['ready', $kitchen], ['served', $this->waiter]] as [$status, $by]) {
+        $this->orders->changeStatus($sale, $status, $by);
+    }
 
     $this->actingAs($this->waiter)->get(route('sales.receipt', $sale))
         ->assertSee('class="watermark"', false)

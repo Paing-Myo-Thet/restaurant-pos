@@ -115,6 +115,19 @@ class Sale extends Model
     }
 
     /**
+     * Waiters print the (draft) bill once the food is served; cashiers and
+     * admins can print or reprint at any time.
+     */
+    public function canBePrintedBy(User $user): bool
+    {
+        if ($user->hasRole('waiter')) {
+            return $this->status === 'served';
+        }
+
+        return $user->hasRole('admin', 'cashier');
+    }
+
+    /**
      * Status changes the given user may make from the current status.
      *
      * @return list<string>
