@@ -212,7 +212,7 @@
                             </th>
 
                             <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                                Orders
+                                Order
                             </th>
 
                             <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">

@@ -39,7 +39,7 @@ class ReportController extends Controller
                   ->whereMonth('created_at', substr($month, 5, 2));
 
             break;
-
+            
         case 'yearly':
 
             $query->whereYear('created_at', $year);

@@ -11,6 +11,7 @@ use App\Http\Controllers\TableController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\StockMovementController;
+use App\Http\Controllers\HelloController;
 
 Route::get('/', function () {
     return redirect()->route('dashboard');
@@ -83,3 +84,5 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
+Route::get('/hello_controller', [HelloController::class, 'index']);
+Route::get('/restaurant', [HelloController::class, 'restaurant']);
