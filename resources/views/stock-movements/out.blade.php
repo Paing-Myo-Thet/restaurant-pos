@@ -55,6 +55,22 @@
                     @enderror
                 </div>
 
+                {{-- Reason --}}
+                <div class="mb-6">
+                    <label for="note" class="block text-sm font-medium text-gray-700 mb-1">
+                        Reason
+                    </label>
+
+                    <input type="text" name="note" id="note" value="{{ old('note') }}" maxlength="255" list="outReasons" placeholder="e.g. Spoiled, damaged, staff meal" class="w-full border-gray-300 rounded-md shadow-sm">
+
+                    <datalist id="outReasons">
+                        <option value="Spoiled / expired">
+                        <option value="Damaged">
+                        <option value="Staff meal">
+                        <option value="Stock count correction">
+                    </datalist>
+                </div>
+
                 {{-- Buttons --}}
                 <div class="flex gap-3">
 
@@ -62,7 +78,7 @@
                         Cancel
                     </a>
 
-                    <button type="submit=" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+                    <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
                         Remove Stock
                     </button>
 

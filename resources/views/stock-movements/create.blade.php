@@ -57,6 +57,15 @@
                     <input type="number" name="quantity" id="quantity" value="{{ old('quantity') }}" min="1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
                 </div>
 
+                {{-- Note --}}
+                <div>
+                    <label for="note" class="block text-sm font-medium text-gray-700">
+                        Note <span class="text-gray-400">(optional)</span>
+                    </label>
+
+                    <input type="text" name="note" id="note" value="{{ old('note') }}" maxlength="255" placeholder="e.g. Delivery from supplier" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>
+
                 {{-- Buttons --}}
                 <div class="flex gap-3">
 

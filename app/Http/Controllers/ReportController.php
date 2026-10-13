@@ -2,236 +2,131 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\View\View;
 use App\Models\Sale;
+use App\Models\SaleItem;
+use Carbon\CarbonImmutable;
+use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\View\View;
 
 class ReportController extends Controller
 {
+    public const PERIODS = ['daily', 'weekly', 'monthly', 'yearly'];
+
     public function index(Request $request): View
-{
-    $period = $request->input('period', 'daily');
+    {
+        $period = in_array($request->input('period'), self::PERIODS, true)
+            ? $request->input('period')
+            : 'daily';
 
-    $date = $request->input('date', today()->format('Y-m-d'));
-    $month = $request->input('month', now()->format('Y-m'));
-    $year = $request->input('year', now()->year);
+        $date = $this->parse($request->input('date'), 'Y-m-d') ?? CarbonImmutable::today();
+        $month = $this->parse($request->input('month'), 'Y-m') ?? CarbonImmutable::today();
+        $year = (int) $request->input('year', now()->year);
 
-    $query = Sale::query()
-        ->where('status', '!=', 'cancelled');
+        [$start, $end, $label] = match ($period) {
+            'weekly' => [$date->startOfWeek(), $date->endOfWeek(),
+                $date->startOfWeek()->format('M j').' – '.$date->endOfWeek()->format('M j, Y')],
+            'monthly' => [$month->startOfMonth(), $month->endOfMonth(), $month->format('F Y')],
+            'yearly' => [CarbonImmutable::create($year)->startOfYear(), CarbonImmutable::create($year)->endOfYear(), (string) $year],
+            default => [$date->startOfDay(), $date->endOfDay(), $date->format('l, F j, Y')],
+        };
 
-    switch ($period) {
+        $sales = Sale::whereBetween('created_at', [$start, $end])->get();
+        $completed = $sales->where('status', '!=', 'cancelled');
+        $paid = $completed->where('payment_status', 'paid');
 
-        case 'weekly':
-
-            $startOfWeek = now()->startOfWeek();
-            $endOfWeek = now()->endOfWeek();
-
-            $query->whereBetween('created_at', [
-                $startOfWeek,
-                $endOfWeek,
+        $items = SaleItem::query()
+            ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+            ->leftJoin('products', 'products.id', '=', 'sale_items.product_id')
+            ->whereBetween('sales.created_at', [$start, $end])
+            ->where('sales.status', '!=', 'cancelled')
+            ->get([
+                'sale_items.product_id',
+                'sale_items.product_name',
+                'sale_items.quantity',
+                'sale_items.subtotal',
+                'sale_items.sale_id',
+                // Older items predate unit_cost; fall back to the product's current cost.
+                'sale_items.unit_cost',
+                'products.cost as product_cost',
             ]);
 
-            break;
+        $costBySale = $items->groupBy('sale_id')->map(fn ($rows) => $rows->sum(
+            fn ($row) => $row->quantity * (float) ($row->unit_cost ?? $row->product_cost ?? 0)
+        ));
 
-        case 'monthly':
+        $grossSales = (float) $completed->sum('total');
+        $cost = (float) $costBySale->sum();
 
-            $query->whereYear('created_at', substr($month, 0, 4))
-                  ->whereMonth('created_at', substr($month, 5, 2));
-
-            break;
-            
-        case 'yearly':
-
-            $query->whereYear('created_at', $year);
-
-            break;
-
-        default:
-
-            $query->whereDate('created_at', $date);
-
-            $period = 'daily';
-
-            break;
+        return view('reports.index', [
+            'period' => $period,
+            'date' => $date->format('Y-m-d'),
+            'month' => $month->format('Y-m'),
+            'year' => $year,
+            'label' => $label,
+            'totalSales' => $grossSales,
+            'totalOrders' => $completed->count(),
+            'paidSales' => (float) $paid->sum('total'),
+            'unpaidSales' => (float) $completed->where('payment_status', 'unpaid')->sum('total'),
+            'cancelledOrders' => $sales->where('status', 'cancelled')->count(),
+            'averageOrder' => $completed->count() ? $grossSales / $completed->count() : 0,
+            'discounts' => (float) $completed->sum('descount'),
+            'cost' => $cost,
+            'profit' => $grossSales - $cost,
+            'topProducts' => $this->topProducts($items),
+            'paymentMethods' => $paid->groupBy(fn ($sale) => $sale->payment_method ?? 'unrecorded')
+                ->map(fn ($group) => ['orders' => $group->count(), 'total' => (float) $group->sum('total')])
+                ->sortByDesc('total'),
+            'breakdown' => $this->breakdown($completed, $costBySale, $period),
+        ]);
     }
 
-    $sales = $query->get();
-
-    $totalSales = $sales->sum('total');
-
-    $totalOrders = $sales->count();
-
-    $paidSales = $sales
-        ->where('payment_status', 'paid')
-        ->sum('total');
-
-    $unpaidSales = $sales
-        ->where('payment_status', 'unpaid')
-        ->sum('total');
-
-    // Cancelled orders
-    $cancelledQuery = Sale::query()
-        ->where('status', 'cancelled');
-
-    switch ($period) {
-
-        case 'weekly':
-
-            $cancelledQuery->whereBetween('created_at', [
-                now()->startOfWeek(),
-                now()->endOfWeek(),
-            ]);
-
-            break;
-
-        case 'monthly':
-
-            $cancelledQuery->whereYear('created_at', substr($month, 0, 4))
-                ->whereMonth('created_at', substr($month, 5, 2));
-
-            break;
-
-        case 'yearly':
-
-            $cancelledQuery->whereYear('created_at', $year);
-
-            break;
-
-        default:
-
-            $cancelledQuery->whereDate('created_at', $date);
-
-            break;
+    private function topProducts(Collection $items): Collection
+    {
+        return $items->groupBy('product_id')
+            ->map(fn ($rows) => [
+                'name' => $rows->first()->product_name,
+                'quantity' => (int) $rows->sum('quantity'),
+                'revenue' => (float) $rows->sum('subtotal'),
+            ])
+            ->sortByDesc('quantity')
+            ->take(10)
+            ->values();
     }
 
-    $cancelledOrders = $cancelledQuery->count();
-    $breakdown = collect();
+    private function breakdown(Collection $sales, Collection $costBySale, string $period): Collection
+    {
+        $groupFormat = $period === 'yearly' ? 'Y-m' : 'Y-m-d';
+        $labelFormat = $period === 'yearly' ? 'F' : 'l, F j';
 
-if ($period === 'daily') {
+        return $sales->groupBy(fn ($sale) => $sale->created_at->format($groupFormat))
+            ->sortKeys()
+            ->map(function ($group, $key) use ($costBySale, $groupFormat, $labelFormat) {
+                $total = (float) $group->sum('total');
+                $cost = (float) $group->sum(fn ($sale) => $costBySale->get($sale->id, 0));
 
-    $breakdown = collect([
-        [
-            'label' => \Carbon\Carbon::parse($date)->format('l, F j, Y'),
-            'orders' => $totalOrders,
-            'sales' => $totalSales,
-            'paid' => $paidSales,
-            'unpaid' => $unpaidSales,
-        ],
-    ]);
+                return [
+                    'label' => CarbonImmutable::createFromFormat('!'.$groupFormat, $key)->format($labelFormat),
+                    'orders' => $group->count(),
+                    'sales' => $total,
+                    'paid' => (float) $group->where('payment_status', 'paid')->sum('total'),
+                    'unpaid' => (float) $group->where('payment_status', 'unpaid')->sum('total'),
+                    'profit' => $total - $cost,
+                ];
+            })
+            ->values();
+    }
 
-} elseif ($period === 'weekly') {
+    private function parse(?string $value, string $format): ?CarbonImmutable
+    {
+        if (! $value) {
+            return null;
+        }
 
-    $start = now()->startOfWeek();
-    $end = now()->endOfWeek();
-
-    $breakdown = Sale::where('status', '!=', 'cancelled')
-        ->whereBetween('created_at', [$start, $end])
-        ->get()
-        ->groupBy(function ($sale) {
-            return $sale->created_at->format('Y-m-d');
-        })
-        ->map(function ($sales, $date) {
-
-            return [
-                'label' => \Carbon\Carbon::parse($date)->format('l, F j'),
-                'orders' => $sales->count(),
-                'sales' => $sales->sum('total'),
-                'paid' => $sales
-                    ->where('payment_status', 'paid')
-                    ->sum('total'),
-                'unpaid' => $sales
-                    ->where('payment_status', 'unpaid')
-                    ->sum('total'),
-            ];
-        })
-        ->sortKeys();
-} elseif ($period === 'monthly') {
-
-    $startOfMonth = \Carbon\Carbon::createFromFormat('Y-m', $month)
-        ->startOfMonth();
-
-    $endOfMonth = \Carbon\Carbon::createFromFormat('Y-m', $month)
-        ->endOfMonth();
-
-    $breakdown = Sale::where('status', '!=', 'cancelled')
-        ->whereBetween('created_at', [
-            $startOfMonth,
-            $endOfMonth,
-        ])
-        ->get()
-        ->groupBy(function ($sale) {
-            return $sale->created_at->format('Y-m-d');
-        })
-        ->map(function ($sales, $date) {
-
-            return [
-                'label' => \Carbon\Carbon::parse($date)
-                    ->format('l, F j'),
-
-                'orders' => $sales->count(),
-
-                'sales' => $sales->sum('total'),
-
-                'paid' => $sales
-                    ->where('payment_status', 'paid')
-                    ->sum('total'),
-
-                'unpaid' => $sales
-                    ->where('payment_status', 'unpaid')
-                    ->sum('total'),
-            ];
-        })
-        ->sortKeys();
-}elseif ($period === 'yearly') {
-
-    $startOfYear = \Carbon\Carbon::createFromDate($year, 1, 1)
-        ->startOfYear();
-
-    $endOfYear = \Carbon\Carbon::createFromDate($year, 12, 31)
-        ->endOfYear();
-
-    $breakdown = Sale::where('status', '!=', 'cancelled')
-        ->whereBetween('created_at', [
-            $startOfYear,
-            $endOfYear,
-        ])
-        ->get()
-        ->groupBy(function ($sale) {
-            return $sale->created_at->format('Y-m');
-        })
-        ->map(function ($sales, $month) {
-
-            return [
-                'label' => \Carbon\Carbon::parse($month . '-01')
-                    ->format('F'),
-
-                'orders' => $sales->count(),
-
-                'sales' => $sales->sum('total'),
-
-                'paid' => $sales
-                    ->where('payment_status', 'paid')
-                    ->sum('total'),
-
-                'unpaid' => $sales
-                    ->where('payment_status', 'unpaid')
-                    ->sum('total'),
-            ];
-        })
-        ->sortKeys();
-}
-
-    return view('reports.index', compact(
-        'totalSales',
-        'totalOrders',
-        'paidSales',
-        'unpaidSales',
-        'cancelledOrders',
-        'period',
-        'date',
-        'month',
-        'year',
-        'breakdown'
-    ));
-}
+        try {
+            return CarbonImmutable::createFromFormat('!'.$format, $value) ?: null;
+        } catch (\Throwable) {
+            return null;
+        }
+    }
 }

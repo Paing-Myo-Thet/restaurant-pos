@@ -3,51 +3,54 @@
     <div class="space-y-6">
 
         {{-- Page Header --}}
-        <div class="flex items-center justify-between">
+        <div class="flex flex-wrap items-center justify-between gap-4">
             <div>
-                <h1 class="text-2xl font-bold text-gray-800">
-                    Stock Movements
-                </h1>
+                <h1 class="text-2xl font-bold text-gray-800">Inventory</h1>
+                <p class="text-sm text-gray-500">Stock movement history</p>
+            </div>
 
-                <p class="text-sm text-gray-500">
-                    View stock movement history
-                </p>
+            <div class="flex gap-2">
+                <a href="{{ route('stock-movements.create') }}" class="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700">
+                    + Stock In
+                </a>
+                <a href="{{ route('stock-movements.out.create') }}" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">
+                    − Stock Out
+                </a>
             </div>
         </div>
 
-        {{-- Success Message --}}
-        @if (session('success'))
-        <div class="rounded-lg bg-green-100 px-4 py-3 text-green-700">
-            {{ session('success') }}
-        </div>
+        @if ($lowStock->isNotEmpty())
+            <div class="rounded-lg border border-orange-200 bg-orange-50 p-4">
+                <p class="text-sm font-semibold text-orange-900">
+                    {{ $lowStock->count() }} {{ Str::plural('product', $lowStock->count()) }} at or below {{ \App\Models\Product::LOW_STOCK_THRESHOLD }} units:
+                </p>
+                <p class="mt-1 text-sm text-orange-800">
+                    {{ $lowStock->map(fn ($p) => "{$p->name} ({$p->stock})")->join(', ') }}
+                </p>
+            </div>
         @endif
 
-        {{-- Stock Movement Table --}}
-        <div class="overflow-hidden rounded-lg bg-white shadow">
+        <div class="flex gap-2">
+            @foreach ([null => 'All', 'in' => 'In', 'out' => 'Out'] as $value => $label)
+                <a href="{{ route('stock-movements.index', array_filter(['type' => $value])) }}"
+                   class="rounded-full px-4 py-1.5 text-sm font-medium
+                   {{ $type === ($value ?: null) ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50' }}">
+                    {{ $label }}
+                </a>
+            @endforeach
+        </div>
 
-            <table class="min-w-full divide-y divide-gray-200">
+        <div class="overflow-x-auto rounded-lg bg-white shadow">
 
-                <thead class="bg-gray-50">
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+
+                <thead class="bg-gray-50 text-left font-semibold text-gray-700">
                     <tr>
-                        <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                            Product
-                        </th>
-
-                        <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                            Type
-                        </th>
-
-                        <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                            Quantity
-                        </th>
-
-                        <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                            User
-                        </th>
-
-                        <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                            Date
-                        </th>
+                        <th class="px-6 py-3">Date</th>
+                        <th class="px-6 py-3">Product</th>
+                        <th class="px-6 py-3 text-right">Quantity</th>
+                        <th class="px-6 py-3">Reason</th>
+                        <th class="px-6 py-3">By</th>
                     </tr>
                 </thead>
 
@@ -55,37 +58,41 @@
 
                     @forelse ($stockMovements as $movement)
 
-                    <tr>
+                        <tr>
+                            <td class="whitespace-nowrap px-6 py-3 text-gray-500">
+                                {{ $movement->created_at->format('Y-m-d H:i') }}
+                            </td>
 
-                        <td class="px-6 py-4 text-sm text-gray-800">
-                            {{ $movement->product->name }}
-                        </td>
+                            <td class="px-6 py-3 text-gray-800">
+                                {{ $movement->product?->name ?? 'Deleted product' }}
+                            </td>
 
-                        <td class="px-6 py-4 text-sm">
-                            {{ ucfirst($movement->type) }}
-                        </td>
+                            <td class="px-6 py-3 text-right font-semibold {{ $movement->type === 'in' ? 'text-green-700' : 'text-red-700' }}">
+                                {{ $movement->type === 'in' ? '+' : '−' }}{{ $movement->quantity }}
+                            </td>
 
-                        <td class="px-6 py-4 text-sm text-gray-800">
-                            {{ $movement->quantity }}
-                        </td>
+                            <td class="px-6 py-3 text-gray-600">
+                                @if ($movement->sale)
+                                    <a href="{{ route('sales.show', $movement->sale) }}" class="text-blue-600 hover:underline">
+                                        {{ $movement->note ?? 'Order '.$movement->sale->order_number }}
+                                    </a>
+                                @else
+                                    {{ $movement->note ?? '—' }}
+                                @endif
+                            </td>
 
-                        <td class="px-6 py-4 text-sm text-gray-800">
-                            {{ $movement->user->name }}
-                        </td>
-
-                        <td class="px-6 py-4 text-sm text-gray-500">
-                            {{ $movement->created_at->format('Y-m-d H:i') }}
-                        </td>
-
-                    </tr>
+                            <td class="px-6 py-3 text-gray-600">
+                                {{ $movement->user?->name }}
+                            </td>
+                        </tr>
 
                     @empty
 
-                    <tr>
-                        <td colspan="5" class="px-6 py-8 text-center text-gray-500">
-                            No stock movements found.
-                        </td>
-                    </tr>
+                        <tr>
+                            <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                                No stock movements found.
+                            </td>
+                        </tr>
 
                     @endforelse
 
@@ -94,6 +101,8 @@
             </table>
 
         </div>
+
+        {{ $stockMovements->links() }}
 
     </div>
 
