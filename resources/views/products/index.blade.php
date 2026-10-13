@@ -39,6 +39,7 @@
                         <th class="px-6 py-4">Cost</th>
                         <th class="px-6 py-4">Price</th>
                         <th class="px-6 py-4">Stock</th>
+                        <th class="px-6 py-4">Description</th>
                         <th class="px-6 py-4">Status</th>
                         <th class="px-6 py-4">Action</th>
                     </tr>
@@ -73,7 +74,9 @@
                         <td class="px-6 py-4">
                             {{ $product->stock }}
                         </td>
-
+                        <td class="px-6 py-4">
+                            {{$product->description ?? '--'}}
+                        </td>
                         <td class="px-6 py-4">
                             @if($product->status)
                             <span class="text-green-600">

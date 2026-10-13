@@ -8,6 +8,7 @@ use App\Models\Table;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\SaleItem;
+use App\Models\StockMovement;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -28,7 +29,20 @@ class SaleController extends Controller
 
         return view('sales.index', compact('sales'));
     }
-
+    public function today(): View
+    {
+        $sales = Sale::with([
+            'customer',
+            'table',
+            'user',
+            'items',
+        ])
+        ->whereDate('created_at', today())
+        ->latest()
+        ->get();
+    
+        return view('sales.today', compact('sales'));
+    }
     /**
      * Show the form for creating a new resource.
      */
@@ -109,8 +123,15 @@ class SaleController extends Controller
                 'unit_price' => $product->price,
                 'subtotal' => $itemSubtotal,
             ]);
-
+            
             $product->decrement('stock', $quantity);
+            
+            StockMovement::create([
+                'product_id' => $product->id,
+                'user_id' => auth()->id(),
+                'type' => 'out',
+                'quantity' => $quantity,
+            ]);
         }
 
         $descount = $validated['descount'] ?? 0;
@@ -219,8 +240,16 @@ class SaleController extends Controller
              * 1. Return old stock
              */
             foreach ($sale->items as $oldItem) {
+    
                 Product::where('id', $oldItem->product_id)
                     ->increment('stock', $oldItem->quantity);
+    
+                StockMovement::create([
+                    'product_id' => $oldItem->product_id,
+                    'user_id' => auth()->id(),
+                    'type' => 'in',
+                    'quantity' => $oldItem->quantity,
+                ]);
             }
     
             /*
@@ -262,6 +291,16 @@ class SaleController extends Controller
                  * Reduce stock for new quantity
                  */
                 $product->decrement('stock', $quantity);
+    
+                /*
+                 * Record stock movement
+                 */
+                StockMovement::create([
+                    'product_id' => $product->id,
+                    'user_id' => auth()->id(),
+                    'type' => 'out',
+                    'quantity' => $quantity,
+                ]);
             }
     
             /*
@@ -278,6 +317,31 @@ class SaleController extends Controller
             /*
              * 5. Update sale
              */
+            /*
+ * 5. Update table status
+ */
+            $oldTableId = $sale->table_id;
+            $newTableId = $validated['table_id'] ?? null;
+
+            // If table changed
+            if ($oldTableId != $newTableId) {
+
+                // Free old table
+                if ($oldTableId) {
+                    Table::where('id', $oldTableId)
+                        ->update([
+                            'status' => 'available',
+                        ]);
+                }
+
+                // Occupy new table
+                if ($newTableId) {
+                    Table::where('id', $newTableId)
+                        ->update([
+                            'status' => 'occupied',
+                        ]);
+                }
+            }
             $sale->update([
                 'customer_id' => $validated['customer_id'] ?? null,
                 'table_id' => $validated['table_id'] ?? null,
@@ -293,50 +357,116 @@ class SaleController extends Controller
             ->with('success', 'Order updated successfully.');
     }
 
+    public function markAsPaid(Sale $sale): RedirectResponse {
+            if($sale->payment_status === 'paid') {
+
+                return back()->with('error', 'This sale is already paid');
+            }
+            $sale->update([
+                'payment_status' => 'paid',
+            ]);
+
+            return back()->with('success', 'Payment status is changed successfully.');
+    }
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Sale $sale)
-    {
+    public function destroy(Sale $sale): RedirectResponse
+{
+    DB::transaction(function () use ($sale) {
+
+        /*
+         * 1. Return sold products to stock
+         */
+        foreach ($sale->items as $item) {
+
+            Product::where('id', $item->product_id)
+                ->increment('stock', $item->quantity);
+
+            StockMovement::create([
+                'product_id' => $item->product_id,
+                'user_id' => auth()->id(),
+                'type' => 'in',
+                'quantity' => $item->quantity,
+            ]);
+        }
+
+        /*
+         * 2. Delete sale
+         */
         $sale->delete();
-        
-        return redirect()
-            ->route('sales.index')
-            ->with('success', 'Deleted Sale Successfully');
+    });
+
+    return redirect()
+        ->route('sales.index')
+        ->with('success', 'Sale deleted successfully.');
+}
+
+public function updateStatus(Request $request, Sale $sale): RedirectResponse
+{
+    $validated = $request->validate([
+        'status' => [
+            'required',
+            'in:pending,sent,preparing,ready,served,cancelled',
+        ],
+    ]);
+
+    $newStatus = $validated['status'];
+
+    // Define allowed status transitions
+    $allowedTransitions = [
+        'pending' => ['sent', 'cancelled'],
+        'sent' => ['preparing', 'cancelled'],
+        'preparing' => ['ready', 'cancelled'],
+        'ready' => ['served'],
+        'served' => [],
+        'cancelled' => [],
+    ];
+
+    if (! in_array($newStatus, $allowedTransitions[$sale->status])) {
+        abort(403, 'Invalid order status transition.');
     }
 
-    public function updateStatus(Request $request, Sale $sale): RedirectResponse
-    {
-        $validated = $request->validate([
-            'status' => [
-                'required',
-                'in:pending,sent,preparing,ready,served,cancelled',
-            ],
-        ]);
-    
-        $newStatus = $validated['status'];
-    
-        // Define allowed status transitions
-        $allowedTransitions = [
-            'pending' => ['sent', 'cancelled'],
-            'sent' => ['preparing', 'cancelled'],
-            'preparing' => ['ready', 'cancelled'],
-            'ready' => ['served'],
-            'served' => [],
-            'cancelled' => [],
-        ];
-    
-        if (! in_array($newStatus, $allowedTransitions[$sale->status])) {
-            abort(403, 'Invalid order status transition.');
+    DB::transaction(function () use ($sale, $newStatus) {
+
+        /*
+         * If order is being cancelled
+         */
+        if ($newStatus === 'cancelled') {
+
+            // Return stock
+            foreach ($sale->items as $item) {
+
+                Product::where('id', $item->product_id)
+                    ->increment('stock', $item->quantity);
+
+                // Record stock movement
+                StockMovement::create([
+                    'product_id' => $item->product_id,
+                    'user_id' => auth()->id(),
+                    'type' => 'in',
+                    'quantity' => $item->quantity,
+                ]);
+            }
+
+            // Free table
+            if ($sale->table_id) {
+                Table::where('id', $sale->table_id)
+                    ->update([
+                        'status' => 'available',
+                    ]);
+            }
         }
-    
+
+        // Update order status
         $sale->update([
             'status' => $newStatus,
         ]);
-    
-        return redirect()
-            ->route('sales.index')
-            ->with('success', 'Order status updated successfully.');
-    }
+    });
+
+    return redirect()
+        ->route('sales.index')
+        ->with('success', 'Order status updated successfully.');
+}
 
 }

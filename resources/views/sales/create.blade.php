@@ -378,7 +378,7 @@
                             onclick="removeItem('${item.id}')"
                             class="text-red-600 hover:text-red-800"
                         >
-                            ×
+                            x
                         </button>
 
                     </td>

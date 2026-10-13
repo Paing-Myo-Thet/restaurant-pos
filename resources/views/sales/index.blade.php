@@ -68,7 +68,7 @@
                             Payment
                         </th>
 
-                        <th class="px-6 py-3 text-right text-sm font-semibold text-gray-700">
+                        <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">
                             Action
                         </th>
                     </tr>
@@ -174,14 +174,46 @@
 
                         </td>
 
-
                         {{-- Action --}}
-                        <td class="px-6 py-4 text-right">
+                        <td class="px-4 py-3">
+                            <div class="flex gap-2">
+                                {{-- View --}}
+                                <a href="{{ route('sales.show', $sale) }}" class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">
+                                    View
+                                </a>
 
-                            <a href="{{ route('sales.show', $sale) }}" class="text-sm font-medium text-blue-600 hover:text-blue-800">
-                                View
-                            </a>
+                                {{-- Edit --}}
+                                <a href="{{ route('sales.edit', $sale) }}" class="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600">
+                                    Edit
+                                </a>
 
+                                {{-- Delete --}}
+                                <form action="{{ route('sales.destroy', $sale) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this order?');">
+
+                                    @csrf
+                                    @method('DELETE')
+
+                                    <button type="submit" class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600">
+                                        Delete
+                                    </button>
+
+                                </form>
+                                @if(in_array($sale->status, ['pending', 'sent', 'preparing']))
+                                <form action="{{ route('sales.status', $sale) }}" method="POST" onsubmit="return confirm('Are you sure you want to cancel this order?');">
+
+                                    @csrf
+
+                                    @method('PATCH')
+
+                                    <input type="hidden" name="status" value="cancelled">
+
+                                    <button type="submit" class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600">
+                                        Cancel
+                                    </button>
+                                </form>
+                                @endif
+
+                            </div>
                         </td>
 
                     </tr>

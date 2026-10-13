@@ -40,7 +40,9 @@ class UserController extends Controller
         ->route('users.index')
         ->with('success', 'User created successfully.');
 }
-
+    public function show(){
+        
+    }
 public function edit(User $user): View
 {
     return view('users.edit',compact('user'));

@@ -88,7 +88,7 @@
                     <select name="role" id="role" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                         @foreach (\App\Enums\UserRole::cases() as $role)
                         <option value="{{ $role->value }}" {{ old('role', 'admin') === $role->value ? 'selected' : '' }}>
-                            {{ ucfirst($role->value) }}
+                            {{ucfirst($role->value) }}
                         </option>
                         @endforeach
                     </select>

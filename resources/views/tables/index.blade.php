@@ -37,11 +37,11 @@
 
                     <thead class="bg-gray-100 text-gray-700">
                         <tr>
-                            <th class="px-6 py-4">#</th>
-                            <th class="px-6 py-4">Table</th>
-                            <th class="px-6 py-4">Capacity</th>
-                            <th class="px-6 py-4">Status</th>
-                            <th class="px-6 py-4 text-right">Actions</th>
+                            <th class="px-4 py-6 text-left">#</th>
+                            <th class="px-4 py-6 text-left">Table</th>
+                            <th class="px-4 py-6 text-left">Capacity</th>
+                            <th class="px-4 py-6 text-left">Status</th>
+                            <th class="px-4 py-6 text-left">Actions</th>
                         </tr>
                     </thead>
 
@@ -62,12 +62,12 @@
                             </td>
 
                             {{-- Capacity --}}
-                            <td class="px-6 py-4">
+                            <td class="px-6 text-left py-4">
                                 {{ $table->capacity }} people
                             </td>
 
                             {{-- Status --}}
-                            <td class="px-6 py-4">
+                            <td class="px-4 text-left py-6">
 
                                 @if ($table->status === 'available')
 
@@ -92,7 +92,7 @@
                             </td>
 
                             {{-- Actions --}}
-                            <td class="px-6 py-4 text-right">
+                            <td class="px-6 py-4 text-left">
 
                                 <a href="{{ route('tables.edit', $table) }}" class="mr-3 font-medium text-blue-600 hover:underline">
                                     Edit

@@ -1,271 +1,250 @@
 <x-app-layout>
 
-    <div class="space-y-6">
+    <div class="max-w-6xl mx-auto px-4 py-6">
 
         {{-- Header --}}
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between mb-6">
             <div>
-                <h1 class="text-2xl font-bold text-gray-900">
+                <h1 class="text-2xl font-bold text-gray-800">
                     Order #{{ $sale->id }}
                 </h1>
 
-                <p class="text-sm text-gray-500">
-                    {{ $sale->created_at->format('d M Y, h:i A') }}
+                <p class="text-sm text-gray-500 mt-1">
+                    Created {{ $sale->created_at->format('d M Y, h:i A') }}
                 </p>
             </div>
 
-            <div class="flex items-center gap-2">
-
-                <a href="{{ route('sales.edit', $sale) }}" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
-                    Edit
-                </a>
-                <form action="{{route('sales.destroy', $sale)}}" method="POST" onsubmit="return confirm('You want to delte this Sale')">
-                    @csrf
-                    @method('DELETE')
-
-                    <button class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700">Delete</button>
-
-                </form>
-                <a href="{{ route('sales.index') }}" class="rounded-lg bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300">
-                    Back
-                </a>
-
-            </div>
+            <a href="{{ route('sales.index') }}" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                ← Back to Sales
+            </a>
         </div>
 
 
-
-
         {{-- Order Information --}}
-        <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
 
-            <div class="rounded-lg bg-white p-5 shadow">
-                <p class="text-sm text-gray-500">Customer</p>
-                <p class="mt-1 font-semibold">
+            {{-- Customer --}}
+            <div class="bg-white rounded-lg shadow p-5">
+                <h2 class="text-sm font-semibold text-gray-500 uppercase">
+                    Customer
+                </h2>
+
+                <p class="text-lg font-semibold text-gray-800 mt-2">
                     {{ $sale->customer?->name ?? 'Walk-in Customer' }}
                 </p>
             </div>
 
-            <div class="rounded-lg bg-white p-5 shadow">
-                <p class="text-sm text-gray-500">Table</p>
-                <p class="mt-1 font-semibold">
-                    {{ $sale->table?->name ?? 'Takeaway' }}
+
+            {{-- Table --}}
+            <div class="bg-white rounded-lg shadow p-5">
+                <h2 class="text-sm font-semibold text-gray-500 uppercase">
+                    Table
+                </h2>
+
+                <p class="text-lg font-semibold text-gray-800 mt-2">
+                    {{ $sale->table?->name ?? 'No Table' }}
                 </p>
             </div>
 
-            <div class="rounded-lg bg-white p-5 shadow">
-                <p class="text-sm text-gray-500">Created By</p>
-                <p class="mt-1 font-semibold">
+
+            {{-- Staff --}}
+            <div class="bg-white rounded-lg shadow p-5">
+                <h2 class="text-sm font-semibold text-gray-500 uppercase">
+                    Created By
+                </h2>
+
+                <p class="text-lg font-semibold text-gray-800 mt-2">
                     {{ $sale->user?->name ?? 'Unknown' }}
                 </p>
             </div>
 
         </div>
 
-        {{-- Items --}}
-        <div class="overflow-hidden rounded-lg bg-white shadow">
 
-            <div class="border-b px-6 py-4">
-                <h2 class="text-lg font-semibold">
-                    Order Items
-                </h2>
-            </div>
+        {{-- Status --}}
+        <div class="bg-white rounded-lg shadow p-5 mb-6">
 
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
+            <div class="flex  flex-wrap gap-6">
 
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                                Product
-                            </th>
+                <div>
+                    <p class="text-sm text-gray-500">
+                        Order Status
+                    </p>
 
-                            <th class="px-6 py-3 text-center text-xs font-medium uppercase text-gray-500">
-                                Qty
-                            </th>
+                    <span class="inline-block mt-2 px-3 py-1 rounded-full text-sm font-semibold
+                        @if($sale->status === 'pending')
+                            bg-yellow-100 text-yellow-800
+                        @elseif($sale->status === 'sent')
+                            bg-blue-100 text-blue-800
+                        @elseif($sale->status === 'preparing')
+                            bg-orange-100 text-orange-800
+                        @elseif($sale->status === 'ready')
+                            bg-green-100 text-green-800
+                        @elseif($sale->status === 'served')
+                            bg-gray-100 text-gray-800
+                        @elseif($sale->status === 'cancelled')
+                            bg-red-100 text-red-800
+                        @endif
+                    ">
+                        {{ ucfirst($sale->status) }}
+                    </span>
+                </div>
 
-                            <th class="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">
-                                Unit Price
-                            </th>
 
-                            <th class="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">
-                                Subtotal
-                            </th>
-                        </tr>
-                    </thead>
+                <div>
+                    <p class="text-sm mb-2 text-gray-500">
+                        Payment Status
+                    </p>
 
-                    <tbody class="divide-y divide-gray-200">
+                    @if ($sale->payment_status === 'unpaid')
+                    <form action="{{ route('sales.markAsPaid', $sale) }}" method="POST">
+                        @csrf
+                        @method('PATCH')
 
-                        @foreach ($sale->items as $item)
-                        <tr>
-
-                            <td class="px-6 py-4 font-medium">
-                                {{ $item->product_name }}
-                            </td>
-
-                            <td class="px-6 py-4 text-center">
-                                {{ $item->quantity }}
-                            </td>
-
-                            <td class="px-6 py-4 text-right">
-                                {{ number_format($item->unit_price, 2) }}
-                            </td>
-
-                            <td class="px-6 py-4 text-right">
-                                {{ number_format($item->subtotal, 2) }}
-                            </td>
-
-                        </tr>
-                        @endforeach
-
-                    </tbody>
-
-                </table>
-            </div>
-
-            {{-- Totals --}}
-            <div class="border-t px-6 py-5">
-
-                <div class="ml-auto max-w-sm space-y-3">
-
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">
-                            Subtotal
-                        </span>
-
-                        <span class="font-medium">
-                            {{ number_format($sale->sub_total, 2) }}
-                        </span>
-                    </div>
-
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">
-                            Discount
-                        </span>
-
-                        <span class="font-medium">
-                            {{ number_format($sale->descount, 2) }}
-                        </span>
-                    </div>
-
-                    <div class="flex justify-between border-t pt-3 text-lg font-bold">
-                        <span>Total</span>
-
-                        <span>
-                            {{ number_format($sale->total, 2) }}
-                        </span>
-                    </div>
-
+                        <button type="submit" class="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white">
+                            Mark as Paid
+                        </button>
+                    </form>
+                    @else
+                    <span class="text-sm pt-2 bg-green-600 py-2 px-6 text-white rounded-md font-medium text-green-600">
+                        Paid
+                    </span>
+                    @endif
                 </div>
 
             </div>
 
         </div>
 
-        {{-- Status --}}
-        {{-- Order Status --}}
-        {{-- Order Status --}}
-        <div class="rounded-lg bg-white p-6 shadow">
 
-            <h2 class="mb-4 text-lg font-semibold text-gray-800">
-                Order Status
-            </h2>
+        {{-- Order Items --}}
+        <div class="bg-white rounded-lg shadow overflow-hidden mb-6">
 
-            <div class="mb-4">
-                <span class="text-sm text-gray-500">
-                    Current Status:
-                </span>
-
-                <span class="font-semibold">
-                    {{ ucfirst($sale->status) }}
-                </span>
+            <div class="px-6 py-4 border-b">
+                <h2 class="text-lg font-bold text-gray-800">
+                    Order Items
+                </h2>
             </div>
 
+            <div class="overflow-x-auto">
 
-            {{-- Waiter: Pending → Sent --}}
-            @if (auth()->user()->role->value === 'waiter' && $sale->status === 'pending')
+                <table class="w-full text-sm">
 
-            <form action="{{ route('sales.updateStatus', $sale) }}" method="POST">
-                @csrf
-                @method('PATCH')
+                    <thead class="bg-gray-50 border-b">
+                        <tr>
+                            <th class="px-6 py-3 text-left">
+                                #
+                            </th>
 
-                <input type="hidden" name="status" value="sent">
+                            <th class="px-6 py-3 text-left">
+                                Product
+                            </th>
 
-                <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700">
-                    Send to Kitchen
-                </button>
-            </form>
+                            <th class="px-6 py-3 text-right">
+                                Unit Price
+                            </th>
 
+                            <th class="px-6 py-3 text-center">
+                                Quantity
+                            </th>
 
-            {{-- Kitchen: Sent → Preparing --}}
-            @elseif (auth()->user()->role->value === 'kitchen' && $sale->status === 'sent')
+                            <th class="px-6 py-3 text-right">
+                                Subtotal
+                            </th>
+                        </tr>
+                    </thead>
 
-            <form action="{{ route('sales.updateStatus', $sale) }}" method="POST">
-                @csrf
-                @method('PATCH')
+                    <tbody class="divide-y">
 
-                <input type="hidden" name="status" value="preparing">
+                        @forelse($sale->items as $index => $item)
 
-                <button type="submit" class="rounded-lg bg-yellow-500 px-4 py-2 font-semibold text-white hover:bg-yellow-600">
-                    Start Preparing
-                </button>
-            </form>
+                        <tr class="hover:bg-gray-50">
 
+                            <td class="px-6 py-4">
+                                {{ $index + 1 }}
+                            </td>
 
-            {{-- Kitchen: Preparing → Ready --}}
-            @elseif (auth()->user()->role->value === 'kitchen' && $sale->status === 'preparing')
+                            <td class="px-6 py-4 font-medium text-gray-800">
+                                {{ $item->product_name }}
+                            </td>
 
-            <form action="{{ route('sales.updateStatus', $sale) }}" method="POST">
-                @csrf
-                @method('PATCH')
+                            <td class="px-6 py-4 text-right">
+                                {{ number_format($item->unit_price, 2) }}
+                            </td>
 
-                <input type="hide" name="status" value="ready">
+                            <td class="px-6 py-4 text-center">
+                                {{ $item->quantity }}
+                            </td>
 
-                <button type="submit" class="rounded-lg bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700">
-                    Mark Ready
-                </button>
-            </form>
+                            <td class="px-6 py-4 text-right font-medium">
+                                {{ number_format($item->subtotal, 2) }}
+                            </td>
 
+                        </tr>
 
-            {{-- Waiter: Ready → Served --}}
-            @elseif (auth()->user()->role->value === 'waiter' && $sale->status === 'ready')
+                        @empty
 
-            <form action="{{ route('sales.updateStatus', $sale) }}" method="POST">
-                @csrf
-                @method('PATCH')
+                        <tr>
+                            <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                                No items found for this order.
+                            </td>
+                        </tr>
 
-                <input type="hidden" name="status" value="served">
+                        @endforelse
 
-                <button type="submit" class="rounded-lg bg-purple-600 px-4 py-2 font-semibold text-white hover:bg-purple-700">
-                    Mark Served
-                </button>
-            </form>
+                    </tbody>
 
+                </table>
 
-            {{-- Served --}}
-            @elseif ($sale->status === 'served')
+            </div>
 
-            <p class="text-sm text-green-600">
-                Order has been served.
-            </p>
-
-
-            {{-- Cancelled --}}
-            @elseif ($sale->status === 'cancelled')
-
-            <p class="text-sm text-red-600">
-                Order has been cancelled.
-            </p>
+        </div>
 
 
-            {{-- No action for this role --}}
-            @else
+        {{-- Order Summary --}}
+        <div class="flex justify-end">
 
-            <p class="text-sm text-gray-500">
-                No action available for your role.
-            </p>
+            <div class="w-full md:w-96 bg-white rounded-lg shadow p-6">
 
-            @endif
+                <h2 class="text-lg font-bold text-gray-800 mb-4">
+                    Order Summary
+                </h2>
+
+                <div class="flex justify-between py-2">
+                    <span class="text-gray-600">
+                        Subtotal
+                    </span>
+
+                    <span class="font-medium">
+                        {{ number_format($sale->sub_total, 2) }}
+                    </span>
+                </div>
+
+
+                <div class="flex justify-between py-2">
+                    <span class="text-gray-600">
+                        Discount
+                    </span>
+
+                    <span class="font-medium text-red-600">
+                        - {{ number_format($sale->descount, 2) }}
+                    </span>
+                </div>
+
+
+                <div class="border-t mt-3 pt-4 flex justify-between">
+
+                    <span class="text-lg font-bold">
+                        Total
+                    </span>
+
+                    <span class="text-xl font-bold text-green-600">
+                        {{ number_format($sale->total, 2) }}
+                    </span>
+
+                </div>
+
+            </div>
 
         </div>
 
