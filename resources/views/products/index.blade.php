@@ -90,7 +90,7 @@
                                     Edit
                                 </a>
 
-                                <form method="POST" action="{{ route('products.destroy', $product) }}" onsubmit="return confirm('Are you sure you want to delete this product?');">
+                                <form method="POST" action="{{ route('products.destroy', $product) }}" data-confirm-title="Delete product?" data-confirm="{{ $product->name }} will be removed. If it has been sold before, it will be deactivated instead so order history stays intact." data-confirm-button="Delete product">
 
                                     @csrf
                                     @method('DELETE')

@@ -49,7 +49,7 @@
 
                                     @if ($user->is_active && ! auth()->user()->is($user))
                                         <form action="{{ route('users.destroy', $user) }}" method="POST"
-                                              onsubmit="return confirm(@js("Deactivate {$user->name}? They will no longer be able to sign in."))">
+                                              data-confirm-title="Deactivate {{ $user->name }}?" data-confirm="They will be signed out and won't be able to log in. Their past orders are kept, and you can reactivate them from Edit." data-confirm-button="Deactivate">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="font-medium text-red-600 hover:underline">Deactivate</button>

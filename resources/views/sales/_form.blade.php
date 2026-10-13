@@ -87,11 +87,11 @@
             <div class="space-y-4 rounded-lg bg-white p-5 shadow lg:sticky lg:top-6">
 
                 @if ($errors->any())
-                    <div class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                    <x-alert type="error" title="Please fix the order" class="!mb-0">
                         @foreach ($errors->all() as $error)
                             <p>{{ $error }}</p>
                         @endforeach
-                    </div>
+                    </x-alert>
                 @endif
 
                 <div class="grid grid-cols-2 gap-3">

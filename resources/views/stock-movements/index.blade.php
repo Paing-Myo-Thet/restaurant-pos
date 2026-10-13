@@ -20,14 +20,10 @@
         </div>
 
         @if ($lowStock->isNotEmpty())
-            <div class="rounded-lg border border-orange-200 bg-orange-50 p-4">
-                <p class="text-sm font-semibold text-orange-900">
-                    {{ $lowStock->count() }} {{ Str::plural('product', $lowStock->count()) }} at or below {{ \App\Models\Product::LOW_STOCK_THRESHOLD }} units:
-                </p>
-                <p class="mt-1 text-sm text-orange-800">
-                    {{ $lowStock->map(fn ($p) => "{$p->name} ({$p->stock})")->join(', ') }}
-                </p>
-            </div>
+            <x-alert type="warning" class="!mb-0"
+                     :title="$lowStock->count().' '.Str::plural('product', $lowStock->count()).' running low'">
+                {{ $lowStock->map(fn ($p) => "{$p->name} ({$p->stock} left)")->join(', ') }}
+            </x-alert>
         @endif
 
         <div class="flex gap-2">

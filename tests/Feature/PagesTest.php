@@ -84,6 +84,25 @@ test('the kitchen screen lists orders sent to the kitchen', function () {
         ->assertDontSee('Mohinga');
 });
 
+test('actions show a styled message and destructive buttons ask in a dialog', function () {
+    $waiter = User::factory()->role('waiter')->create();
+
+    $pending = Sale::where('status', 'pending')->first();
+
+    $this->actingAs($waiter)
+        ->from(route('sales.show', $pending))
+        ->followingRedirects()
+        ->patch(route('sales.status', $pending), ['status' => 'sent'])
+        ->assertSee('data-alert', false)
+        ->assertSee('marked as sent');
+
+    // Orders already in the kitchen can be cancelled by cashiers, not waiters.
+    $this->actingAs(User::factory()->role('cashier')->create())
+        ->get(route('sales.show', $this->sale))
+        ->assertSee('data-confirm-title="Cancel order '.$this->sale->order_number.'?"', false)
+        ->assertSee('id="confirmDialog"', false);
+});
+
 test('the order page offers checkout to cashiers but not waiters', function () {
     $this->actingAs(User::factory()->role('cashier')->create())
         ->get(route('sales.show', $this->sale))

@@ -49,7 +49,7 @@
         </div>
 
         @error('status')
-            <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{{ $message }}</div>
+            <x-alert type="error" title="Status not changed" class="!mb-0">{{ $message }}</x-alert>
         @enderror
 
         {{-- Status actions --}}
@@ -59,7 +59,7 @@
 
                 @foreach ($nextStatuses as $next)
                     <form action="{{ route('sales.status', $sale) }}" method="POST"
-                          @if ($next === 'cancelled') onsubmit="return confirm('Cancel this order? Its items will be returned to stock.');" @endif>
+                          @if ($next === 'cancelled') data-confirm-title="Cancel order {{ $sale->order_number }}?" data-confirm="All items go back into stock and the table is freed. This can't be undone." data-confirm-button="Cancel order" @endif>
                         @csrf
                         @method('PATCH')
                         <input type="hidden" name="status" value="{{ $next }}">
