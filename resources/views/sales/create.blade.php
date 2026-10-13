@@ -317,9 +317,7 @@
 
                     <td class="py-3">
 
-                        <div class="font-medium">
-                            ${item.name}
-                        </div>
+                        <div class="font-medium item-name"></div>
 
                         <input
                             type="hidden"
@@ -384,6 +382,8 @@
                     </td>
 
                 `;
+
+                row.querySelector('.item-name').textContent = item.name;
 
                 orderItems.appendChild(row);
 
