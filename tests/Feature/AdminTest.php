@@ -138,10 +138,29 @@ test('the receipt shows the payment and change', function () {
     $sale = $this->orders->create(['items' => [['product_id' => $product->id, 'quantity' => 2]]], $this->waiter);
     $this->orders->checkout($sale, ['payment_method' => 'cash', 'amount_received' => 10000]);
 
-    $this->actingAs($this->waiter)->get(route('sales.receipt', $sale))
+    $this->actingAs(User::factory()->role('cashier')->create())->get(route('sales.receipt', $sale))
         ->assertOk()
         ->assertSee('RECEIPT')
+        ->assertDontSee('DRAFT')
         ->assertSee('Mohinga')
         ->assertSee('5,000.00')
         ->assertSee('Change');
+});
+
+test('a waiter printout is watermarked as a draft, even after payment', function () {
+    $product = Product::factory()->create(['price' => 2500]);
+    $sale = $this->orders->create(['items' => [['product_id' => $product->id, 'quantity' => 1]]], $this->waiter);
+
+    $this->actingAs($this->waiter)->get(route('sales.receipt', $sale))
+        ->assertSee('class="watermark"', false)
+        ->assertSee('DRAFT — NOT A RECEIPT');
+
+    $this->orders->checkout($sale, ['payment_method' => 'card']);
+
+    $this->actingAs($this->waiter)->get(route('sales.receipt', $sale))
+        ->assertSee('DRAFT — NOT A RECEIPT')
+        ->assertDontSee('>RECEIPT<', false);
+
+    $this->actingAs($this->waiter)->get(route('sales.show', $sale))
+        ->assertSee('Print draft bill');
 });

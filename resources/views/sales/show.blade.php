@@ -42,7 +42,7 @@
 
                     <a href="{{ route('sales.receipt', $sale) }}" target="_blank"
                        class="rounded-lg px-4 py-2 text-sm font-medium text-white {{ session('print_receipt') ? 'bg-green-600 hover:bg-green-700 ring-4 ring-green-200' : 'bg-gray-700 hover:bg-gray-800' }}">
-                        🖨 {{ $sale->isPaid() ? 'Print receipt' : 'Print bill' }}
+                        🖨 {{ $user->hasRole('waiter') ? 'Print draft bill' : ($sale->isPaid() ? 'Print receipt' : 'Print bill') }}
                     </a>
                 @endif
             </div>

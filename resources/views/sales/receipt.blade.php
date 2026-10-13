@@ -3,14 +3,20 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $sale->isPaid() ? 'Receipt' : 'Bill' }} {{ $sale->order_number }}</title>
+    <title>{{ $isDraft ? 'Draft' : ($sale->isPaid() ? 'Receipt' : 'Bill') }} {{ $sale->order_number }}</title>
 
     <style>
         /* Sized for 80mm thermal receipt printers. */
         @page { size: 80mm auto; margin: 4mm; }
         * { box-sizing: border-box; }
         body { margin: 0; background: #f3f4f6; font: 12px/1.45 ui-monospace, Menlo, Consolas, monospace; color: #000; }
-        .receipt { width: 72mm; margin: 16px auto; padding: 12px; background: #fff; }
+        .receipt { position: relative; overflow: hidden; width: 72mm; margin: 16px auto; padding: 12px; background: #fff; }
+        /* Text, not a background image, so it still prints with background graphics off. */
+        .watermark { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-around;
+                     align-items: center; pointer-events: none; user-select: none; }
+        .watermark span { transform: rotate(-30deg); font: bold 52px/1 Arial, sans-serif; letter-spacing: 6px;
+                          color: rgba(0, 0, 0, 0.13); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .draft-label { margin-top: 4px; border: 2px solid #000; padding: 2px 0; font-weight: bold; letter-spacing: 2px; }
         .center { text-align: center; }
         h1 { margin: 0; font-size: 16px; }
         .muted { color: #444; }
@@ -31,9 +37,22 @@
 <body>
 
     <div class="receipt">
+        @if ($isDraft)
+            {{-- Repeated down the slip so no part of a long bill is unmarked. --}}
+            <div class="watermark" aria-hidden="true">
+                @for ($i = 0; $i < max(2, (int) ceil($sale->items->count() / 4) + 1); $i++)
+                    <span>DRAFT</span>
+                @endfor
+            </div>
+        @endif
+
         <div class="center">
             <h1>{{ config('app.name', 'Restaurant POS') }}</h1>
-            <div class="muted">{{ $sale->isPaid() ? 'RECEIPT' : 'BILL — NOT PAID' }}</div>
+            @if ($isDraft)
+                <div class="draft-label">DRAFT — NOT A RECEIPT</div>
+            @else
+                <div class="muted">{{ $sale->isPaid() ? 'RECEIPT' : 'BILL — NOT PAID' }}</div>
+            @endif
         </div>
 
         <hr>
@@ -82,7 +101,13 @@
 
         <hr>
 
-        <div class="center muted">Thank you! Please come again.</div>
+        <div class="center muted">
+            @if ($isDraft)
+                Please pay at the counter for your official receipt.
+            @else
+                Thank you! Please come again.
+            @endif
+        </div>
     </div>
 
     <div class="actions">

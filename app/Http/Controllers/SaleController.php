@@ -148,7 +148,11 @@ class SaleController extends Controller
     {
         $sale->load(['customer', 'table', 'user', 'items']);
 
-        return view('sales.receipt', compact('sale'));
+        return view('sales.receipt', [
+            'sale' => $sale,
+            // Waiters can print a copy for the table, but only the cashier issues the real receipt.
+            'isDraft' => auth()->user()->hasRole('waiter'),
+        ]);
     }
 
     private function validateOrder(Request $request, ?Sale $sale = null): array
