@@ -84,6 +84,12 @@ class TableController extends Controller
      */
     public function destroy(Table $table)
     {
+        if ($table->sales()->open()->exists()) {
+            return redirect()
+                ->route('tables.index')
+                ->with('error', "{$table->name} has open orders and can't be deleted.");
+        }
+
         $table->delete();
 
         return redirect()

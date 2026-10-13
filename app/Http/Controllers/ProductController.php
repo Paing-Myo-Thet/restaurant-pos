@@ -94,6 +94,15 @@ class ProductController extends Controller
      */
     public function destroy(Product $product)
     {
+        // Sold products are referenced by order history, so hide them instead.
+        if ($product->saleItems()->exists()) {
+            $product->update(['status' => false]);
+
+            return redirect()
+                ->route('products.index')
+                ->with('success', "{$product->name} has sales history, so it was deactivated instead of deleted.");
+        }
+
         $product->delete();
 
         return redirect()

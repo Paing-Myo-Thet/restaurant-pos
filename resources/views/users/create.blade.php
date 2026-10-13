@@ -54,7 +54,7 @@
                         Password
                     </label>
 
-                    <input type="password" name="password" value="{{old('password')}}" class="mt-1 block w-full rounded-lg
+                    <input type="password" name="password" class="mt-1 block w-full rounded-lg
                      border-gray-300" placeholder="Enter password">
 
                     @error('password')
@@ -87,7 +87,7 @@
 
                     <select name="role" id="role" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                         @foreach (\App\Enums\UserRole::cases() as $role)
-                        <option value="{{ $role->value }}" {{ old('role', 'admin') === $role->value ? 'selected' : '' }}>
+                        <option value="{{ $role->value }}" {{ old('role', 'waiter') === $role->value ? 'selected' : '' }}>
                             {{ucfirst($role->value) }}
                         </option>
                         @endforeach
