@@ -32,8 +32,8 @@ class CustomerController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'phone' => 'nullable|interger|max:25',
-            'email' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:255',
             'address' => 'nullable|string|max:255'
         ]);
 
@@ -84,6 +84,12 @@ class CustomerController extends Controller
      */
     public function destroy(Customer $customer)
     {
+        if ($customer->sales()->exists()) {
+            return redirect()
+                ->route('customers.index')
+                ->with('error', "{$customer->name} has order history and can't be deleted.");
+        }
+
         $customer->delete();
 
         return redirect()

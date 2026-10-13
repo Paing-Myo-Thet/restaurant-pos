@@ -22,13 +22,6 @@
         </div>
 
         {{-- Success --}}
-        @if(session('success'))
-
-        <div class="rounded-lg bg-green-100 px-4 py-3 text-green-700">
-            {{ session('success') }}
-        </div>
-
-        @endif
 
         {{-- Table --}}
         <div class="overflow-hidden rounded-lg bg-white shadow">
@@ -82,7 +75,7 @@
                                     Edit
                                 </a>
 
-                                <form method="POST" action="{{ route('customers.destroy', $customer) }}" onsubmit="return confirm('Are you sure you want to delete this customer?');">
+                                <form method="POST" action="{{ route('customers.destroy', $customer) }}" data-confirm-title="Delete customer?" data-confirm="{{ $customer->name }} will be removed permanently. Customers with past orders can't be deleted." data-confirm-button="Delete customer">
 
                                     @csrf
                                     @method('DELETE')

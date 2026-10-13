@@ -20,12 +20,6 @@
         </div>
 
 
-        {{-- Success Message --}}
-        @if (session('success'))
-        <div class="rounded-lg bg-green-100 px-4 py-3 text-green-700">
-            {{ session('success') }}
-        </div>
-        @endif
 
 
         {{-- Tables --}}
@@ -98,12 +92,12 @@
                                     Edit
                                 </a>
 
-                                <form action="{{ route('tables.destroy', $table) }}" method="POST" class="inline">
+                                <form action="{{ route('tables.destroy', $table) }}" method="POST" class="inline" data-confirm-title="Delete {{ $table->name }}?" data-confirm="The table will be removed permanently. Tables with open orders can't be deleted." data-confirm-button="Delete table">
 
                                     @csrf
                                     @method('DELETE')
 
-                                    <button type="submit" onclick="return confirm('Are you sure you want to delete this table?')" class="font-medium text-red-600 hover:underline">
+                                    <button type="submit" class="font-medium text-red-600 hover:underline">
                                         Delete
                                     </button>
 

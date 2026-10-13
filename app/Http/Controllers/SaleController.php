@@ -2,471 +2,188 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Models\Category;
+use App\Models\Customer;
 use App\Models\Sale;
 use App\Models\Table;
-use App\Models\Customer;
-use App\Models\Product;
-use App\Models\SaleItem;
-use App\Models\StockMovement;
-use Illuminate\Support\Facades\DB;
+use App\Services\OrderService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class SaleController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index(): View
-    {
-        $sales = Sale::with([
-            'customer',
-            'table',
-            'user',
-            'items'
-        ])->latest()->get();
+    public const FILTERS = [
+        'open' => 'Open',
+        'unpaid' => 'Unpaid',
+        'completed' => 'Completed',
+        'cancelled' => 'Cancelled',
+        'all' => 'All',
+    ];
 
-        return view('sales.index', compact('sales'));
+    public function __construct(private OrderService $orders)
+    {
     }
+
+    public function index(Request $request): View
+    {
+        $filter = array_key_exists($request->query('filter'), self::FILTERS)
+            ? $request->query('filter')
+            : 'open';
+
+        $sales = Sale::with(['customer', 'table', 'user'])
+            ->when($filter === 'open', fn ($q) => $q->open())
+            ->when($filter === 'unpaid', fn ($q) => $q->where('payment_status', 'unpaid')->where('status', '!=', 'cancelled'))
+            ->when($filter === 'completed', fn ($q) => $q->where('status', 'served')->where('payment_status', 'paid'))
+            ->when($filter === 'cancelled', fn ($q) => $q->where('status', 'cancelled'))
+            ->latest()
+            ->paginate(20)
+            ->withQueryString();
+
+        return view('sales.index', [
+            'sales' => $sales,
+            'filter' => $filter,
+            'filters' => self::FILTERS,
+            'title' => 'Orders',
+        ]);
+    }
+
     public function today(): View
     {
-        $sales = Sale::with([
-            'customer',
-            'table',
-            'user',
-            'items',
-        ])
-        ->whereDate('created_at', today())
-        ->latest()
-        ->get();
-    
-        return view('sales.today', compact('sales'));
+        $sales = Sale::with(['customer', 'table', 'user'])
+            ->whereDate('created_at', today())
+            ->latest()
+            ->paginate(20);
+
+        return view('sales.index', [
+            'sales' => $sales,
+            'filter' => null,
+            'filters' => [],
+            'title' => "Today's Orders",
+        ]);
     }
-    /**
-     * Show the form for creating a new resource.
-     */
+
     public function create(): View
     {
-        $products = Product::where('status',true)
-            ->where('stock', '>', 0)
-            ->get();
-
-        $customers = Customer::latest()->get();
-
-        $tables = Table::where('status', 'available')->get();
-        
-        return view('sales.create', compact('products', 'customers', 'tables'));
+        return view('sales.create', $this->formData());
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request): RedirectResponse
-{
-    $validated = $request->validate([
-        'customer_id' => ['nullable', 'exists:customers,id'],
-        'table_id' => ['nullable', 'exists:tables,id'],
-        'descount' => ['nullable', 'numeric', 'min:0'],
-        'payment_status' => ['required', 'in:unpaid,paid'],
+    {
+        $sale = $this->orders->create($this->validateOrder($request), $request->user());
 
-        'items' => ['required', 'array', 'min:1'],
+        return redirect()
+            ->route('sales.show', $sale)
+            ->with('success', "Order {$sale->order_number} created.");
+    }
 
-        'items.*.product_id' => [
-            'required',
-            'exists:products,id',
-        ],
-
-        'items.*.quantity' => [
-            'required',
-            'integer',
-            'min:1',
-        ],
-    ]);
-
-    DB::transaction(function () use ($validated) {
-
-        $subtotal = 0;
-
-        $sale = Sale::create([
-            'customer_id' => $validated['customer_id'],
-            'table_id' => $validated['table_id'],
-            'user_id' => auth()->id(),
-            'sub_total' => 0,
-            'descount' => $validated['descount'] ?? 0,
-            'total' => 0,
-            'status' => 'pending',
-            'payment_status' => $validated['payment_status'],
-        ]);
-
-        foreach ($validated['items'] as $item) {
-
-            $product = Product::findOrFail($item['product_id']);
-
-            $quantity = $item['quantity'];
-
-            if ($quantity > $product->stock) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'items' => "Not enough stock for {$product->name}.",
-                ]);
-            }
-
-            $itemSubtotal = $product->price * $quantity;
-
-            $subtotal += $itemSubtotal;
-
-            SaleItem::create([
-                'sale_id' => $sale->id,
-                'product_id' => $product->id,
-                'product_name' => $product->name,
-                'quantity' => $quantity,
-                'unit_price' => $product->price,
-                'subtotal' => $itemSubtotal,
-            ]);
-            
-            $product->decrement('stock', $quantity);
-            
-            StockMovement::create([
-                'product_id' => $product->id,
-                'user_id' => auth()->id(),
-                'type' => 'out',
-                'quantity' => $quantity,
-            ]);
-        }
-
-        $descount = $validated['descount'] ?? 0;
-
-        if ($descount > $subtotal) {
-            $descount = $subtotal;
-        }
-
-        $total = $subtotal - $descount;
-
-        $sale->update([
-            'sub_total' => $subtotal,
-            'descount' => $descount,
-            'total' => $total,
-        ]);
-
-        if ($sale->table_id) {
-            Table::where('id', $sale->table_id)
-                ->update([
-                    'status' => 'occupied',
-                ]);
-        }
-    });
-
-    return redirect()
-        ->route('sales.index')
-        ->with('success', 'Order created successfully.');
-}
-    /**
-     * Display the specified resource.
-     */
     public function show(Sale $sale): View
-{
-    $sale->load([
-        'customer',
-        'table',
-        'user',
-        'items.product',
-    ]);
+    {
+        $sale->load(['customer', 'table', 'user', 'items']);
 
-    return view('sales.show', compact('sale'));
-}
+        return view('sales.show', [
+            'sale' => $sale,
+            'nextStatuses' => $sale->nextStatusesFor(auth()->user()),
+        ]);
+    }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Sale $sale): View
-{
-    $sale->load('items');
+    public function edit(Sale $sale): View|RedirectResponse
+    {
+        if (! $sale->isEditable()) {
+            return redirect()
+                ->route('sales.show', $sale)
+                ->with('error', 'Only unpaid orders that the kitchen has not started can be edited.');
+        }
 
-    $cart = $sale->items->mapWithKeys(function ($item) {
-        return [
+        $cart = $sale->items->mapWithKeys(fn ($item) => [
             $item->product_id => [
                 'id' => $item->product_id,
                 'name' => $item->product_name,
                 'price' => (float) $item->unit_price,
                 'quantity' => $item->quantity,
             ],
-        ];
-    });
+        ]);
 
-    $products = Product::where('stock', '>', 0)
-        ->orderBy('name')
-        ->get();
+        return view('sales.edit', $this->formData() + ['sale' => $sale, 'cart' => $cart]);
+    }
 
-    $customers = Customer::orderBy('name')->get();
-    $tables = Table::orderBy('name')->get();
-
-    return view('sales.edit', compact(
-        'sale',
-        'products',
-        'customers',
-        'tables',
-        'cart'
-    ));
-}
-
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, Sale $sale): RedirectResponse
     {
+        $this->orders->update($sale, $this->validateOrder($request, $sale), $request->user());
+
+        return redirect()
+            ->route('sales.show', $sale)
+            ->with('success', "Order {$sale->order_number} updated.");
+    }
+
+    public function updateStatus(Request $request, Sale $sale): RedirectResponse
+    {
         $validated = $request->validate([
+            'status' => ['required', Rule::in(['sent', 'preparing', 'ready', 'served', 'cancelled'])],
+        ]);
+
+        $this->orders->changeStatus($sale, $validated['status'], $request->user());
+
+        return back()->with('success', "Order {$sale->order_number} marked as {$validated['status']}.");
+    }
+
+    public function checkout(Request $request, Sale $sale): RedirectResponse
+    {
+        $validated = $request->validate([
+            'payment_method' => ['required', Rule::in(Sale::PAYMENT_METHODS)],
+            'descount' => ['nullable', 'numeric', 'min:0'],
+            'amount_received' => ['nullable', 'required_if:payment_method,cash', 'numeric', 'min:0'],
+        ]);
+
+        $this->orders->checkout($sale, $validated);
+
+        return redirect()
+            ->route('sales.show', $sale)
+            ->with('success', "Payment recorded for order {$sale->order_number}.")
+            ->with('print_receipt', true);
+    }
+
+    public function receipt(Sale $sale): View
+    {
+        $sale->load(['customer', 'table', 'user', 'items']);
+
+        return view('sales.receipt', compact('sale'));
+    }
+
+    private function validateOrder(Request $request, ?Sale $sale = null): array
+    {
+        // Products already on the order may stay even if they were deactivated since.
+        $keptProductIds = $sale?->items()->pluck('product_id')->all() ?? [];
+
+        return $request->validate([
             'customer_id' => ['nullable', 'exists:customers,id'],
             'table_id' => ['nullable', 'exists:tables,id'],
-            'descount' => ['nullable', 'numeric', 'min:0'],
-            'payment_status' => ['required', 'in:unpaid,paid'],
-    
+            'note' => ['nullable', 'string', 'max:255'],
             'items' => ['required', 'array', 'min:1'],
-    
             'items.*.product_id' => [
                 'required',
-                'exists:products,id',
-            ],
-    
-            'items.*.quantity' => [
-                'required',
                 'integer',
-                'min:1',
+                Rule::exists('products', 'id')->where(fn ($q) => $q->where(fn ($q) => $q
+                    ->where('status', true)
+                    ->orWhereIn('id', $keptProductIds))),
             ],
+            'items.*.quantity' => ['required', 'integer', 'min:1', 'max:999'],
+        ], [
+            'items.required' => 'Add at least one product to the order.',
         ]);
-    
-        DB::transaction(function () use ($validated, $sale) {
-    
-            /*
-             * 1. Return old stock
-             */
-            foreach ($sale->items as $oldItem) {
-    
-                Product::where('id', $oldItem->product_id)
-                    ->increment('stock', $oldItem->quantity);
-    
-                StockMovement::create([
-                    'product_id' => $oldItem->product_id,
-                    'user_id' => auth()->id(),
-                    'type' => 'in',
-                    'quantity' => $oldItem->quantity,
-                ]);
-            }
-    
-            /*
-             * 2. Delete old sale items
-             */
-            $sale->items()->delete();
-    
-            /*
-             * 3. Calculate new order
-             */
-            $subtotal = 0;
-    
-            foreach ($validated['items'] as $item) {
-    
-                $product = Product::findOrFail($item['product_id']);
-    
-                $quantity = $item['quantity'];
-    
-                if ($quantity > $product->stock) {
-                    throw \Illuminate\Validation\ValidationException::withMessages([
-                        'items' => "Not enough stock for {$product->name}.",
-                    ]);
-                }
-    
-                $itemSubtotal = $product->price * $quantity;
-    
-                $subtotal += $itemSubtotal;
-    
-                SaleItem::create([
-                    'sale_id' => $sale->id,
-                    'product_id' => $product->id,
-                    'product_name' => $product->name,
-                    'quantity' => $quantity,
-                    'unit_price' => $product->price,
-                    'subtotal' => $itemSubtotal,
-                ]);
-    
-                /*
-                 * Reduce stock for new quantity
-                 */
-                $product->decrement('stock', $quantity);
-    
-                /*
-                 * Record stock movement
-                 */
-                StockMovement::create([
-                    'product_id' => $product->id,
-                    'user_id' => auth()->id(),
-                    'type' => 'out',
-                    'quantity' => $quantity,
-                ]);
-            }
-    
-            /*
-             * 4. Calculate discount
-             */
-            $descount = $validated['descount'] ?? 0;
-    
-            if ($descount > $subtotal) {
-                $descount = $subtotal;
-            }
-    
-            $total = $subtotal - $descount;
-    
-            /*
-             * 5. Update sale
-             */
-            /*
- * 5. Update table status
- */
-            $oldTableId = $sale->table_id;
-            $newTableId = $validated['table_id'] ?? null;
-
-            // If table changed
-            if ($oldTableId != $newTableId) {
-
-                // Free old table
-                if ($oldTableId) {
-                    Table::where('id', $oldTableId)
-                        ->update([
-                            'status' => 'available',
-                        ]);
-                }
-
-                // Occupy new table
-                if ($newTableId) {
-                    Table::where('id', $newTableId)
-                        ->update([
-                            'status' => 'occupied',
-                        ]);
-                }
-            }
-            $sale->update([
-                'customer_id' => $validated['customer_id'] ?? null,
-                'table_id' => $validated['table_id'] ?? null,
-                'sub_total' => $subtotal,
-                'descount' => $descount,
-                'total' => $total,
-                'payment_status' => $validated['payment_status'],
-            ]);
-        });
-    
-        return redirect()
-            ->route('sales.index')
-            ->with('success', 'Order updated successfully.');
     }
 
-    public function markAsPaid(Sale $sale): RedirectResponse {
-            if($sale->payment_status === 'paid') {
-
-                return back()->with('error', 'This sale is already paid');
-            }
-            $sale->update([
-                'payment_status' => 'paid',
-            ]);
-
-            return back()->with('success', 'Payment status is changed successfully.');
+    private function formData(): array
+    {
+        return [
+            'categories' => Category::where('status', true)
+                ->with(['products' => fn ($q) => $q->where('status', true)->orderBy('name')])
+                ->orderBy('name')
+                ->get()
+                ->filter(fn ($category) => $category->products->isNotEmpty()),
+            'customers' => Customer::orderBy('name')->get(),
+            'tables' => Table::orderBy('name')->get(),
+        ];
     }
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Sale $sale): RedirectResponse
-{
-    DB::transaction(function () use ($sale) {
-
-        /*
-         * 1. Return sold products to stock
-         */
-        foreach ($sale->items as $item) {
-
-            Product::where('id', $item->product_id)
-                ->increment('stock', $item->quantity);
-
-            StockMovement::create([
-                'product_id' => $item->product_id,
-                'user_id' => auth()->id(),
-                'type' => 'in',
-                'quantity' => $item->quantity,
-            ]);
-        }
-
-        /*
-         * 2. Delete sale
-         */
-        $sale->delete();
-    });
-
-    return redirect()
-        ->route('sales.index')
-        ->with('success', 'Sale deleted successfully.');
-}
-
-public function updateStatus(Request $request, Sale $sale): RedirectResponse
-{
-    $validated = $request->validate([
-        'status' => [
-            'required',
-            'in:pending,sent,preparing,ready,served,cancelled',
-        ],
-    ]);
-
-    $newStatus = $validated['status'];
-
-    // Define allowed status transitions
-    $allowedTransitions = [
-        'pending' => ['sent', 'cancelled'],
-        'sent' => ['preparing', 'cancelled'],
-        'preparing' => ['ready', 'cancelled'],
-        'ready' => ['served'],
-        'served' => [],
-        'cancelled' => [],
-    ];
-
-    if (! in_array($newStatus, $allowedTransitions[$sale->status])) {
-        abort(403, 'Invalid order status transition.');
-    }
-
-    DB::transaction(function () use ($sale, $newStatus) {
-
-        /*
-         * If order is being cancelled
-         */
-        if ($newStatus === 'cancelled') {
-
-            // Return stock
-            foreach ($sale->items as $item) {
-
-                Product::where('id', $item->product_id)
-                    ->increment('stock', $item->quantity);
-
-                // Record stock movement
-                StockMovement::create([
-                    'product_id' => $item->product_id,
-                    'user_id' => auth()->id(),
-                    'type' => 'in',
-                    'quantity' => $item->quantity,
-                ]);
-            }
-
-            // Free table
-            if ($sale->table_id) {
-                Table::where('id', $sale->table_id)
-                    ->update([
-                        'status' => 'available',
-                    ]);
-            }
-        }
-
-        // Update order status
-        $sale->update([
-            'status' => $newStatus,
-        ]);
-    });
-
-    return redirect()
-        ->route('sales.index')
-        ->with('success', 'Order status updated successfully.');
-}
-
 }

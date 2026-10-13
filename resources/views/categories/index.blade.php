@@ -18,12 +18,6 @@
                 + Add Category
             </a>
         </div>
-        {{-- Success Message --}}
-        @if(session('success'))
-        <div class="rounded-lg bg-green-100 px-4 py-3 text-green-700">
-            {{ session('success') }}
-        </div>
-        @endif
 
         {{-- Categories Table --}}
         <div class="overflow-hidden rounded-lg bg-white shadow">
@@ -93,7 +87,7 @@
                                     Edit
                                 </a>
 
-                                <form action="{{ route('categories.destroy', $category) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this category?')">
+                                <form action="{{ route('categories.destroy', $category) }}" method="POST" data-confirm-title="Delete category?" data-confirm="{{ $category->name }} will be removed permanently. Categories that still have products can't be deleted." data-confirm-button="Delete category">
 
                                     @csrf
                                     @method('DELETE')

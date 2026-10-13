@@ -91,6 +91,13 @@ class CategoryController extends Controller
      */
     public function destroy(Category $category)
     {
+        // Deleting a category would cascade-delete its products.
+        if ($category->products()->exists()) {
+            return redirect()
+                ->route('categories.index')
+                ->with('error', "{$category->name} still has products. Move or remove them first, or deactivate the category.");
+        }
+
         $category->delete();
         return redirect()
         ->route('categories.index')
