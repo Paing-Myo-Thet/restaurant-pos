@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Product;
+use App\Models\Role;
 use App\Models\Table;
 use App\Models\User;
 use App\Services\OrderService;
@@ -67,7 +68,7 @@ class DemoDataSeeder extends Seeder
             User::firstOrCreate(['email' => "{$role}@restaurant.com"], [
                 'name' => 'Demo '.ucfirst($role),
                 'password' => 'password',
-                'role' => $role,
+                'role_id' => Role::where('name', ucfirst($role))->value('id'),
             ]);
         }
 

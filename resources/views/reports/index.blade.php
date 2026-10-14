@@ -57,7 +57,7 @@
                 ['Gross profit', number_format($profit, 0).' Ks', 'Sales − cost of items ('.number_format($cost, 0).' Ks)', $profit >= 0 ? 'text-green-700' : 'text-red-700'],
                 ['Average order', number_format($averageOrder, 0).' Ks', 'Discounts given: '.number_format($discounts, 0).' Ks', 'text-gray-900'],
                 ['Collected', number_format($paidSales, 0).' Ks', 'Unpaid: '.number_format($unpaidSales, 0).' Ks', 'text-gray-900'],
-                ['Cancelled', $cancelledOrders, 'Orders cancelled', $cancelledOrders ? 'text-red-700' : 'text-gray-900'],
+                ['Cancelled', $cancelledOrders, 'Food written off: '.number_format($writtenOff, 0).' Ks', $cancelledOrders ? 'text-red-700' : 'text-gray-900'],
             ];
         @endphp
 

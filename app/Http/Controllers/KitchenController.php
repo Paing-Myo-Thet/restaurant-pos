@@ -13,6 +13,11 @@ class KitchenController extends Controller
         'ready' => 'Ready to serve',
     ];
 
+    /**
+     * How long a cancelled order stays on the kitchen screen as a STOP notice.
+     */
+    public const CANCELLED_NOTICE_MINUTES = 30;
+
     public function index(): View
     {
         $orders = Sale::with(['table', 'items'])
@@ -22,9 +27,18 @@ class KitchenController extends Controller
             ->get()
             ->groupBy('status');
 
+        // Orders the kitchen had received but that were then cancelled, so cooks stop making them.
+        $cancelled = Sale::with(['table', 'items'])
+            ->where('status', 'cancelled')
+            ->whereNotNull('sent_at')
+            ->where('cancelled_at', '>=', now()->subMinutes(self::CANCELLED_NOTICE_MINUTES))
+            ->latest('cancelled_at')
+            ->get();
+
         return view('kitchen.index', [
             'columns' => self::COLUMNS,
             'orders' => $orders,
+            'cancelled' => $cancelled,
         ]);
     }
 }

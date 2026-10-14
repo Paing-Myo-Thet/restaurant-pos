@@ -33,24 +33,22 @@
                     ← Orders
                 </a>
 
-                @if ($user->hasRole('admin', 'cashier', 'waiter'))
-                    @if ($sale->isEditable())
-                        <a href="{{ route('sales.edit', $sale) }}" class="rounded-lg bg-yellow-500 px-4 py-2 text-sm font-medium text-white hover:bg-yellow-600">
-                            Edit items
-                        </a>
-                    @endif
+                @if ($sale->isEditable() && $user->can('orders.manage'))
+                    <a href="{{ route('sales.edit', $sale) }}" class="rounded-lg bg-yellow-500 px-4 py-2 text-sm font-medium text-white hover:bg-yellow-600">
+                        Edit items
+                    </a>
+                @endif
 
-                    @if ($sale->canBePrintedBy($user))
-                        <a href="{{ route('sales.receipt', $sale) }}" target="_blank"
-                           class="rounded-lg px-4 py-2 text-sm font-medium text-white {{ session('print_receipt') ? 'bg-green-600 hover:bg-green-700 ring-4 ring-green-200' : 'bg-gray-700 hover:bg-gray-800' }}">
-                            🖨 {{ $user->hasRole('waiter') ? 'Print draft bill' : ($sale->isPaid() ? 'Print receipt' : 'Print bill') }}
-                        </a>
-                    @elseif ($sale->status !== 'cancelled')
-                        <span class="rounded-lg border border-dashed border-gray-300 px-4 py-2 text-sm text-gray-400"
-                              title="Mark the order as served to print the bill">
-                            🖨 Bill available once served
-                        </span>
-                    @endif
+                @if ($sale->canBePrintedBy($user))
+                    <a href="{{ route('sales.receipt', $sale) }}" target="_blank"
+                       class="rounded-lg px-4 py-2 text-sm font-medium text-white {{ session('print_receipt') ? 'bg-green-600 hover:bg-green-700 ring-4 ring-green-200' : 'bg-gray-700 hover:bg-gray-800' }}">
+                        🖨 {{ ! $user->can('orders.checkout') ? 'Print draft bill' : ($sale->isPaid() ? 'Print receipt' : 'Print bill') }}
+                    </a>
+                @elseif ($sale->status !== 'cancelled' && $user->can('orders.print_draft'))
+                    <span class="rounded-lg border border-dashed border-gray-300 px-4 py-2 text-sm text-gray-400"
+                          title="Mark the order as served to print the bill">
+                        🖨 Bill available once served
+                    </span>
                 @endif
             </div>
         </div>
@@ -59,29 +57,81 @@
             <x-alert type="error" title="Status not changed" class="!mb-0">{{ $message }}</x-alert>
         @enderror
 
+        @error('cancel_reason')
+            <x-alert type="error" title="Order not cancelled" class="!mb-0">{{ $message }}</x-alert>
+        @enderror
+
+        {{-- Cancellation record --}}
+        @if ($sale->isCancelled())
+            <div class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+                <p class="font-semibold">
+                    Cancelled
+                    @if ($sale->cancelled_at)
+                        {{ $sale->cancelled_at->format('d M Y, h:i A') }}
+                    @endif
+                    @if ($sale->cancelledBy)
+                        by {{ $sale->cancelledBy->name }}
+                    @endif
+                </p>
+                @if ($sale->cancel_reason)
+                    <p class="mt-1"><span class="font-medium">Reason:</span> {{ $sale->cancel_reason }}</p>
+                @endif
+                @if ($sale->cancelled_from)
+                    <p class="mt-1">
+                        {{ $sale->wasWrittenOff()
+                            ? 'The kitchen had already started, so the food was written off and not returned to stock.'
+                            : 'The kitchen had not started, so the items were returned to stock.' }}
+                    </p>
+                @endif
+                <p class="mt-1 text-red-700">Cancelled orders have no bill.</p>
+            </div>
+        @endif
+
         {{-- Status actions --}}
         @if ($nextStatuses)
             <div class="flex flex-wrap items-center gap-3 rounded-lg bg-white p-4 shadow">
                 <span class="text-sm font-medium text-gray-500">Next step:</span>
 
                 @foreach ($nextStatuses as $next)
-                    <form action="{{ route('sales.status', $sale) }}" method="POST"
-                          @if ($next === 'cancelled') data-confirm-title="Cancel order {{ $sale->order_number }}?" data-confirm="All items go back into stock and the table is freed. This can't be undone." data-confirm-button="Cancel order" @endif>
+                    @continue($next === 'cancelled')
+
+                    <form action="{{ route('sales.status', $sale) }}" method="POST">
                         @csrf
                         @method('PATCH')
                         <input type="hidden" name="status" value="{{ $next }}">
 
-                        @if ($next === 'cancelled')
-                            <button type="submit" class="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50">
-                                Cancel order
-                            </button>
-                        @else
-                            <button type="submit" class="rounded-lg px-4 py-2 text-sm font-semibold text-white {{ $statusButtons[$next][1] }}">
-                                {{ $statusButtons[$next][0] }}
-                            </button>
-                        @endif
+                        <button type="submit" class="rounded-lg px-4 py-2 text-sm font-semibold text-white {{ $statusButtons[$next][1] }}">
+                            {{ $statusButtons[$next][0] }}
+                        </button>
                     </form>
                 @endforeach
+
+                @if (in_array('cancelled', $nextStatuses, true))
+                    <form action="{{ route('sales.status', $sale) }}" method="POST" class="flex flex-wrap items-center gap-2 sm:ml-auto"
+                          data-confirm-title="Cancel order {{ $sale->order_number }}?"
+                          data-confirm="{{ $sale->restocksOnCancel()
+                              ? 'The items go back into stock and the table is freed. This can\'t be undone.'
+                              : 'The kitchen has already started, so the food is written off and NOT returned to stock. This can\'t be undone.' }}"
+                          data-confirm-button="Cancel order">
+                        @csrf
+                        @method('PATCH')
+                        <input type="hidden" name="status" value="cancelled">
+
+                        <input type="text" name="cancel_reason" list="cancelReasons" maxlength="255"
+                               value="{{ old('cancel_reason') }}" @required($sale->cancelNeedsReason())
+                               placeholder="{{ $sale->cancelNeedsReason() ? 'Reason (required)' : 'Reason (optional)' }}"
+                               class="w-56 rounded-lg border-gray-300 text-sm">
+                        <datalist id="cancelReasons">
+                            @foreach (\App\Models\Sale::CANCEL_REASONS as $reason)
+                                <option value="{{ $reason }}"></option>
+                            @endforeach
+                        </datalist>
+
+                        <button type="submit" class="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50">
+                            Cancel order
+                        </button>
+                    </form>
+                @endif
             </div>
         @endif
 
@@ -190,7 +240,7 @@
                 </div>
 
                 {{-- Checkout --}}
-                @if ($sale->canCheckout() && $user->hasRole('admin', 'cashier'))
+                @if ($sale->canCheckout() && $user->can('orders.checkout'))
                     <form action="{{ route('sales.checkout', $sale) }}" method="POST" id="checkoutForm"
                           class="space-y-4 rounded-lg bg-white p-6 shadow ring-2 ring-green-500">
                         @csrf

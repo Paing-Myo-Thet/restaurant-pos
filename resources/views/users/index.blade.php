@@ -35,7 +35,7 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4">{{ $user->email }}</td>
-                            <td class="px-6 py-4 capitalize">{{ $user->role?->value }}</td>
+                            <td class="px-6 py-4">{{ $user->role?->name ?? '—' }}</td>
                             <td class="px-6 py-4">
                                 @if ($user->is_active)
                                     <span class="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-800">Active</span>

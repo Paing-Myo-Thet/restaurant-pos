@@ -116,7 +116,7 @@
             {{-- Side panel --}}
             <div class="space-y-6">
 
-                @if ($user->isAdmin())
+                @can('inventory.manage')
                     <div class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-200">
                         <div class="flex items-center justify-between">
                             <h2 class="text-lg font-semibold text-gray-900">Low Stock</h2>
@@ -144,21 +144,25 @@
                             </a>
                         @endif
                     </div>
-                @endif
+                @endcan
 
                 <div class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-200">
                     <h2 class="mb-4 text-lg font-semibold text-gray-900">Quick Actions</h2>
 
                     <div class="grid grid-cols-2 gap-3">
                         <a href="{{ route('sales.index', ['filter' => 'unpaid']) }}" class="rounded-xl bg-gray-50 p-4 text-sm font-medium text-gray-700 hover:bg-gray-100">💳 Unpaid orders</a>
-                        @if ($user->hasRole('admin', 'waiter'))
+                        @can('tables.manage')
                             <a href="{{ route('tables.index') }}" class="rounded-xl bg-gray-50 p-4 text-sm font-medium text-gray-700 hover:bg-gray-100">🪑 Tables</a>
-                        @endif
-                        @if ($user->isAdmin())
+                        @endcan
+                        @can('kitchen.manage')
                             <a href="{{ route('kitchen.index') }}" class="rounded-xl bg-gray-50 p-4 text-sm font-medium text-gray-700 hover:bg-gray-100">👨‍🍳 Kitchen</a>
+                        @endcan
+                        @can('menu.manage')
                             <a href="{{ route('products.index') }}" class="rounded-xl bg-gray-50 p-4 text-sm font-medium text-gray-700 hover:bg-gray-100">🍔 Products</a>
+                        @endcan
+                        @can('reports.view')
                             <a href="{{ route('reports.index') }}" class="rounded-xl bg-gray-50 p-4 text-sm font-medium text-gray-700 hover:bg-gray-100">📈 Reports</a>
-                        @endif
+                        @endcan
                     </div>
                 </div>
             </div>

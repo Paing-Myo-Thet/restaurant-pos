@@ -45,20 +45,22 @@
                 {{-- Role --}}
                 <div>
                     <label for="role" class="mb-2 block text-sm font-medium text-gray-700">Role</label>
-                    <select id="role" name="role" required @disabled($isSelf)
-                            class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm disabled:bg-gray-100">
-                        @foreach (\App\Enums\UserRole::cases() as $role)
-                            <option value="{{ $role->value }}" @selected(old('role', $user->role?->value) === $role->value)>
-                                {{ ucfirst($role->value) }}
-                            </option>
-                        @endforeach
-                    </select>
                     @if ($isSelf)
-                        {{-- Disabled fields aren't submitted, so send the current role. --}}
-                        <input type="hidden" name="role" value="{{ $user->role?->value }}">
+                        <select id="role" disabled class="w-full rounded-lg border border-gray-300 bg-gray-100 px-4 py-2.5 text-sm">
+                            <option>{{ $user->role?->name }}</option>
+                        </select>
                         <p class="mt-1 text-xs text-gray-500">You can't change your own role.</p>
+                    @else
+                        <select id="role" name="role_id" required
+                                class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm">
+                            @foreach ($roles as $role)
+                                <option value="{{ $role->id }}" @selected(old('role_id', $user->role_id) == $role->id)>
+                                    {{ $role->name }}
+                                </option>
+                            @endforeach
+                        </select>
                     @endif
-                    @error('role')
+                    @error('role_id')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                 </div>
