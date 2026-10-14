@@ -32,7 +32,7 @@ class TableController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'capacity' => 'required|integer|min:1',
+            'capacity' => 'required|integer|min:1|max:1000',
             'status' => 'required|in:available,occupied,reserved'
         ]);
 
@@ -67,7 +67,7 @@ class TableController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'capacity' => 'integer|min:1',
+            'capacity' => 'required|integer|min:1|max:1000',
             'status' => 'required|in:available,occupied,reserved'
         ]);
 

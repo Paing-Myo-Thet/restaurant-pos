@@ -21,7 +21,9 @@ class ReportController extends Controller
 
         $date = $this->parse($request->input('date'), 'Y-m-d') ?? CarbonImmutable::today();
         $month = $this->parse($request->input('month'), 'Y-m') ?? CarbonImmutable::today();
-        $year = (int) $request->input('year', now()->year);
+        $year = filter_var($request->input('year'), FILTER_VALIDATE_INT, [
+            'options' => ['min_range' => 2000, 'max_range' => 2100],
+        ]) ?: now()->year;
 
         [$start, $end, $label] = match ($period) {
             'weekly' => [$date->startOfWeek(), $date->endOfWeek(),
@@ -117,9 +119,9 @@ class ReportController extends Controller
             ->values();
     }
 
-    private function parse(?string $value, string $format): ?CarbonImmutable
+    private function parse(mixed $value, string $format): ?CarbonImmutable
     {
-        if (! $value) {
+        if (! $value || ! is_string($value)) {
             return null;
         }
 

@@ -132,8 +132,9 @@ class SaleController extends Controller
     {
         $validated = $request->validate([
             'payment_method' => ['required', Rule::in(Sale::PAYMENT_METHODS)],
-            'descount' => ['nullable', 'numeric', 'min:0'],
-            'amount_received' => ['nullable', 'required_if:payment_method,cash', 'numeric', 'min:0'],
+            // Columns are decimal(10,2); larger values would fail at the database.
+            'descount' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
+            'amount_received' => ['nullable', 'required_if:payment_method,cash', 'numeric', 'min:0', 'max:99999999'],
         ]);
 
         $this->orders->checkout($sale, $validated);
