@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Permission;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,23 +14,42 @@ class Sale extends Model
     public const PAYMENT_METHODS = ['cash', 'card', 'mobile'];
 
     /**
-     * Allowed status changes and the roles that may make each one.
+     * Statuses where the kitchen hasn't started cooking, so cancelling returns
+     * the items to stock. Cancelled later, the food is written off as waste.
+     */
+    public const RESTOCKABLE_STATUSES = ['pending', 'sent'];
+
+    /**
+     * Common reasons offered when cancelling; staff can also type their own.
+     */
+    public const CANCEL_REASONS = [
+        'Customer changed their mind',
+        'Customer left',
+        'Ordered by mistake',
+        'Item not available',
+        'Kitchen took too long',
+        'Food quality complaint',
+    ];
+
+    /**
+     * Allowed status changes and the permission each one needs.
      */
     public const TRANSITIONS = [
         'pending' => [
-            'sent' => ['admin', 'cashier', 'waiter'],
-            'cancelled' => ['admin', 'cashier', 'waiter'],
+            'sent' => Permission::OrdersManage,
+            'cancelled' => Permission::OrdersManage,
         ],
         'sent' => [
-            'preparing' => ['admin', 'kitchen'],
-            'cancelled' => ['admin', 'cashier'],
+            'preparing' => Permission::KitchenManage,
+            'cancelled' => Permission::OrdersCancel,
         ],
         'preparing' => [
-            'ready' => ['admin', 'kitchen'],
-            'cancelled' => ['admin'],
+            'ready' => Permission::KitchenManage,
+            'cancelled' => Permission::OrdersVoid,
         ],
         'ready' => [
-            'served' => ['admin', 'cashier', 'waiter'],
+            'served' => Permission::OrdersManage,
+            'cancelled' => Permission::OrdersVoid,
         ],
     ];
 
@@ -48,6 +68,10 @@ class Sale extends Model
         'change_due',
         'sent_at',
         'paid_at',
+        'cancelled_at',
+        'cancelled_by',
+        'cancelled_from',
+        'cancel_reason',
     ];
 
     protected function casts(): array
@@ -60,6 +84,7 @@ class Sale extends Model
             'change_due' => 'decimal:2',
             'sent_at' => 'datetime',
             'paid_at' => 'datetime',
+            'cancelled_at' => 'datetime',
         ];
     }
 
@@ -81,6 +106,11 @@ class Sale extends Model
     public function items()
     {
         return $this->hasMany(SaleItem::class);
+    }
+
+    public function cancelledBy()
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
     }
 
     public function getOrderNumberAttribute(): string
@@ -114,17 +144,52 @@ class Sale extends Model
         return ! $this->isPaid() && $this->status !== 'cancelled';
     }
 
+    public function isCancelled(): bool
+    {
+        return $this->status === 'cancelled';
+    }
+
     /**
-     * Waiters print the (draft) bill once the food is served; cashiers and
-     * admins can print or reprint at any time.
+     * Whether cancelling now would return the items to stock.
+     */
+    public function restocksOnCancel(): bool
+    {
+        return in_array($this->status, self::RESTOCKABLE_STATUSES, true);
+    }
+
+    /**
+     * Cancelled after the kitchen had started, so the food was wasted.
+     */
+    public function wasWrittenOff(): bool
+    {
+        return $this->isCancelled() && $this->cancelled_from !== null
+            && ! in_array($this->cancelled_from, self::RESTOCKABLE_STATUSES, true);
+    }
+
+    /**
+     * Once the kitchen has the order, cancelling needs a reason for the record.
+     */
+    public function cancelNeedsReason(): bool
+    {
+        return $this->status !== 'pending';
+    }
+
+    /**
+     * Cancelled orders never print. Whoever takes payment can print or reprint at any time; staff who can
+     * only print drafts get the bill once the food is served.
      */
     public function canBePrintedBy(User $user): bool
     {
-        if ($user->hasRole('waiter')) {
-            return $this->status === 'served';
+        // A bill for a cancelled order could be used to collect cash off the books.
+        if ($this->isCancelled()) {
+            return false;
         }
 
-        return $user->hasRole('admin', 'cashier');
+        if ($user->hasPermission(Permission::OrdersCheckout)) {
+            return true;
+        }
+
+        return $user->hasPermission(Permission::OrdersPrintDraft) && $this->status === 'served';
     }
 
     /**
@@ -136,12 +201,12 @@ class Sale extends Model
     {
         $next = [];
 
-        foreach (self::TRANSITIONS[$this->status] ?? [] as $status => $roles) {
+        foreach (self::TRANSITIONS[$this->status] ?? [] as $status => $permission) {
             if ($status === 'cancelled' && $this->isPaid()) {
                 continue;
             }
 
-            if ($user->hasRole(...$roles)) {
+            if ($user->hasPermission($permission)) {
                 $next[] = $status;
             }
         }

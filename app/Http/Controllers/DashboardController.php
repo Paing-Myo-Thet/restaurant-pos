@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Permission;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\Table;
@@ -15,8 +16,8 @@ class DashboardController extends Controller
     {
         $user = $request->user();
 
-        if ($user->hasRole('kitchen')) {
-            return redirect()->route('kitchen.index');
+        if (! $user->hasPermission(Permission::DashboardView)) {
+            return redirect()->route($user->homeRoute());
         }
 
         $todayOrders = Sale::whereDate('created_at', today())
@@ -31,7 +32,7 @@ class DashboardController extends Controller
             'openOrders' => Sale::open()->count(),
             'occupiedTables' => Table::where('status', 'occupied')->count(),
             'totalTables' => Table::count(),
-            'lowStock' => $user->isAdmin()
+            'lowStock' => $user->hasPermission(Permission::InventoryManage)
                 ? Product::lowStock()->orderBy('stock')->limit(5)->get()
                 : collect(),
             'lowStockCount' => Product::lowStock()->count(),

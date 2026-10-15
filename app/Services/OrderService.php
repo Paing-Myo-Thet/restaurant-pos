@@ -114,9 +114,9 @@ class OrderService
         });
     }
 
-    public function changeStatus(Sale $sale, string $status, User $user): Sale
+    public function changeStatus(Sale $sale, string $status, User $user, ?string $reason = null): Sale
     {
-        return DB::transaction(function () use ($sale, $status, $user) {
+        return DB::transaction(function () use ($sale, $status, $user, $reason) {
             $sale = Sale::lockForUpdate()->findOrFail($sale->id);
 
             if (! in_array($status, $sale->nextStatusesFor($user), true)) {
@@ -126,7 +126,7 @@ class OrderService
             }
 
             if ($status === 'cancelled') {
-                $this->restock($sale, $user);
+                $this->cancel($sale, $user, $reason);
             }
 
             $sale->update([
@@ -138,6 +138,32 @@ class OrderService
 
             return $sale;
         });
+    }
+
+    /**
+     * Record who cancelled and why. Items the kitchen hasn't started go back
+     * to stock; once cooking has begun the food is written off instead.
+     */
+    private function cancel(Sale $sale, User $user, ?string $reason): void
+    {
+        $reason = trim((string) $reason) ?: null;
+
+        if (! $reason && $sale->cancelNeedsReason()) {
+            throw ValidationException::withMessages([
+                'cancel_reason' => 'Give a reason for cancelling an order the kitchen already has.',
+            ]);
+        }
+
+        if ($sale->restocksOnCancel()) {
+            $this->restock($sale, $user);
+        }
+
+        $sale->fill([
+            'cancelled_at' => now(),
+            'cancelled_by' => $user->id,
+            'cancelled_from' => $sale->status,
+            'cancel_reason' => $reason,
+        ]);
     }
 
     /**

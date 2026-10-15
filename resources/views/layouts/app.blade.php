@@ -15,18 +15,19 @@
 @php
     $user = Auth::user();
 
-    // [route, active pattern, icon, label, roles]
+    // [route, active pattern, icon, label, permission]
     $navigation = [
-        ['dashboard', 'dashboard', '📊', 'Dashboard', ['admin', 'cashier', 'waiter']],
-        ['sales.index', 'sales.*', '🧾', 'Orders', ['admin', 'cashier', 'waiter', 'kitchen']],
-        ['kitchen.index', 'kitchen.*', '👨‍🍳', 'Kitchen', ['admin', 'kitchen']],
-        ['tables.index', 'tables.*', '🪑', 'Tables', ['admin', 'waiter']],
-        ['products.index', 'products.*', '🍔', 'Products', ['admin']],
-        ['categories.index', 'categories.*', '📂', 'Categories', ['admin']],
-        ['stock-movements.index', 'stock-movements.*', '📦', 'Inventory', ['admin']],
-        ['customers.index', 'customers.*', '🙋', 'Customers', ['admin']],
-        ['users.index', 'users.*', '👥', 'Staff', ['admin']],
-        ['reports.index', 'reports.*', '📈', 'Reports', ['admin']],
+        ['dashboard', 'dashboard', '📊', 'Dashboard', 'dashboard.view'],
+        ['sales.index', 'sales.*', '🧾', 'Orders', 'orders.view'],
+        ['kitchen.index', 'kitchen.*', '👨‍🍳', 'Kitchen', 'kitchen.manage'],
+        ['tables.index', 'tables.*', '🪑', 'Tables', 'tables.manage'],
+        ['products.index', 'products.*', '🍔', 'Products', 'menu.manage'],
+        ['categories.index', 'categories.*', '📂', 'Categories', 'menu.manage'],
+        ['stock-movements.index', 'stock-movements.*', '📦', 'Inventory', 'inventory.manage'],
+        ['customers.index', 'customers.*', '🙋', 'Customers', 'customers.manage'],
+        ['users.index', 'users.*', '👥', 'Staff', 'users.manage'],
+        ['roles.index', 'roles.*', '🔐', 'Roles', 'roles.manage'],
+        ['reports.index', 'reports.*', '📈', 'Reports', 'reports.view'],
     ];
 @endphp
 
@@ -46,8 +47,8 @@
 
             {{-- Navigation --}}
             <nav class="mt-6 space-y-1 px-3">
-                @foreach ($navigation as [$route, $pattern, $icon, $label, $roles])
-                    @if ($user?->hasRole(...$roles))
+                @foreach ($navigation as [$route, $pattern, $icon, $label, $permission])
+                    @can($permission)
                         <a href="{{ route($route) }}"
                            class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition duration-200
                            {{ request()->routeIs($pattern)
@@ -56,7 +57,7 @@
                             <span class="text-lg">{{ $icon }}</span>
                             <span>{{ $label }}</span>
                         </a>
-                    @endif
+                    @endcan
                 @endforeach
             </nav>
 
@@ -89,7 +90,7 @@
                             </p>
 
                             <p class="text-xs capitalize text-gray-500">
-                                {{ $user?->role?->value }}
+                                {{ $user?->role?->name }}
                             </p>
                         </div>
                     </a>

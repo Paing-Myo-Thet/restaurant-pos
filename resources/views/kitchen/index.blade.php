@@ -29,6 +29,33 @@
             <x-alert type="error" title="Status not changed" class="!mb-0">{{ $message }}</x-alert>
         @enderror
 
+        @if ($cancelled->isNotEmpty())
+            <div class="rounded-xl border-2 border-red-500 bg-red-50 p-4">
+                <h2 class="font-bold text-red-700">🛑 Cancelled: stop making these</h2>
+
+                <ul class="mt-3 space-y-2">
+                    @foreach ($cancelled as $order)
+                        <li class="rounded-lg bg-white p-3 text-sm shadow-sm">
+                            <div class="flex flex-wrap items-baseline justify-between gap-2">
+                                <span class="font-semibold text-gray-900">
+                                    {{ $order->order_number }} · {{ $order->table?->name ?? 'Takeaway' }}
+                                </span>
+                                <span class="text-xs text-gray-500">cancelled {{ $order->cancelled_at->diffForHumans() }}</span>
+                            </div>
+                            <p class="mt-1 text-gray-700">
+                                @foreach ($order->items as $item)
+                                    {{ $item->product_name }} × {{ $item->quantity }}@if (! $loop->last), @endif
+                                @endforeach
+                            </p>
+                            @if ($order->cancel_reason)
+                                <p class="mt-1 text-xs text-red-700">{{ $order->cancel_reason }}</p>
+                            @endif
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         <div class="grid gap-6 lg:grid-cols-3">
             @foreach ($columns as $status => $label)
                 @php $column = $orders->get($status, collect()); @endphp

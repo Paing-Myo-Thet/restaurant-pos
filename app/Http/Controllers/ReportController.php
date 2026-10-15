@@ -71,6 +71,8 @@ class ReportController extends Controller
             'paidSales' => (float) $paid->sum('total'),
             'unpaidSales' => (float) $completed->where('payment_status', 'unpaid')->sum('total'),
             'cancelledOrders' => $sales->where('status', 'cancelled')->count(),
+            // Cancelled after the kitchen started: the food was made but never sold.
+            'writtenOff' => (float) $sales->filter(fn ($sale) => $sale->wasWrittenOff())->sum('sub_total'),
             'averageOrder' => $completed->count() ? $grossSales / $completed->count() : 0,
             'discounts' => (float) $completed->sum('descount'),
             'cost' => $cost,

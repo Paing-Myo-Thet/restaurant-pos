@@ -40,7 +40,7 @@ test('admins cannot deactivate or demote themselves', function () {
     $this->actingAs($this->admin)->delete(route('users.destroy', $this->admin));
 
     $this->actingAs($this->admin)->put(route('users.update', $this->admin), [
-        'name' => 'Boss', 'email' => $this->admin->email, 'role' => 'waiter', 'is_active' => 0,
+        'name' => 'Boss', 'email' => $this->admin->email, 'role_id' => $this->waiter->role_id, 'is_active' => 0,
     ]);
 
     $admin = $this->admin->fresh();

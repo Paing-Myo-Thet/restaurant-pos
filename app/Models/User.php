@@ -3,12 +3,12 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\Permission;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use App\Enums\UserRole;
 
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -20,7 +20,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role',
+        'role_id',
         'is_active',
     ];
 
@@ -34,18 +34,35 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'role' => UserRole::class,
             'is_active' => 'boolean',
         ];
     }
 
-    public function hasRole(string ...$roles): bool
+    public function role()
     {
-        return in_array($this->role?->value, $roles, true);
+        return $this->belongsTo(Role::class);
+    }
+
+    public function hasPermission(Permission $permission): bool
+    {
+        return (bool) $this->role?->allows($permission);
     }
 
     public function isAdmin(): bool
     {
-        return $this->hasRole(UserRole::ADMIN->value);
+        return (bool) $this->role?->is_system;
+    }
+
+    /**
+     * Where to send the user when they open the dashboard without access to it.
+     */
+    public function homeRoute(): string
+    {
+        return match (true) {
+            $this->hasPermission(Permission::DashboardView) => 'dashboard',
+            $this->hasPermission(Permission::KitchenManage) => 'kitchen.index',
+            $this->hasPermission(Permission::OrdersView) => 'sales.index',
+            default => 'profile.edit',
+        };
     }
 }

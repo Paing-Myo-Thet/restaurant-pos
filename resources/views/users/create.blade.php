@@ -85,15 +85,16 @@
                         Role
                     </label>
 
-                    <select name="role" id="role" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-                        @foreach (\App\Enums\UserRole::cases() as $role)
-                        <option value="{{ $role->value }}" {{ old('role', 'waiter') === $role->value ? 'selected' : '' }}>
-                            {{ucfirst($role->value) }}
+                    <select name="role_id" id="role" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        <option value="" disabled @selected(! old('role_id'))>Choose a role…</option>
+                        @foreach ($roles as $role)
+                        <option value="{{ $role->id }}" @selected(old('role_id') == $role->id)>
+                            {{ $role->name }}
                         </option>
                         @endforeach
                     </select>
 
-                    @error('role')
+                    @error('role_id')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
 

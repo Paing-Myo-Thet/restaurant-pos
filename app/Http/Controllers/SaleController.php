@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Permission;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Sale;
@@ -80,7 +81,7 @@ class SaleController extends Controller
 
     public function show(Sale $sale): View
     {
-        $sale->load(['customer', 'table', 'user', 'items']);
+        $sale->load(['customer', 'table', 'user', 'items', 'cancelledBy']);
 
         return view('sales.show', [
             'sale' => $sale,
@@ -121,9 +122,10 @@ class SaleController extends Controller
     {
         $validated = $request->validate([
             'status' => ['required', Rule::in(['sent', 'preparing', 'ready', 'served', 'cancelled'])],
+            'cancel_reason' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $this->orders->changeStatus($sale, $validated['status'], $request->user());
+        $this->orders->changeStatus($sale, $validated['status'], $request->user(), $validated['cancel_reason'] ?? null);
 
         return back()->with('success', "Order {$sale->order_number} marked as {$validated['status']}.");
     }
@@ -145,9 +147,19 @@ class SaleController extends Controller
             ->with('print_receipt', true);
     }
 
-    public function receipt(Sale $sale): View|RedirectResponse
+    public function receipt(Request $request, Sale $sale): View|RedirectResponse
     {
-        if (! $sale->canBePrintedBy(auth()->user())) {
+        $user = $request->user();
+
+        abort_unless($user->hasPermission(Permission::OrdersCheckout) || $user->hasPermission(Permission::OrdersPrintDraft), 403);
+
+        if ($sale->isCancelled()) {
+            return redirect()
+                ->route('sales.show', $sale)
+                ->with('error', 'Cancelled orders have no bill.');
+        }
+
+        if (! $sale->canBePrintedBy($user)) {
             return redirect()
                 ->route('sales.show', $sale)
                 ->with('error', 'The bill can be printed once the order has been served.');
@@ -157,8 +169,8 @@ class SaleController extends Controller
 
         return view('sales.receipt', [
             'sale' => $sale,
-            // Waiters can print a copy for the table, but only the cashier issues the real receipt.
-            'isDraft' => auth()->user()->hasRole('waiter'),
+            // Staff who can't take payment print a copy for the table; only checkout issues the real receipt.
+            'isDraft' => ! $user->hasPermission(Permission::OrdersCheckout),
         ]);
     }
 
