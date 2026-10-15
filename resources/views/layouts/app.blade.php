@@ -13,22 +13,22 @@
 </head>
 
 @php
-    $user = Auth::user();
+$user = Auth::user();
 
-    // [route, active pattern, icon, label, permission]
-    $navigation = [
-        ['dashboard', 'dashboard', '📊', 'Dashboard', 'dashboard.view'],
-        ['sales.index', 'sales.*', '🧾', 'Orders', 'orders.view'],
-        ['kitchen.index', 'kitchen.*', '👨‍🍳', 'Kitchen', 'kitchen.manage'],
-        ['tables.index', 'tables.*', '🪑', 'Tables', 'tables.manage'],
-        ['products.index', 'products.*', '🍔', 'Products', 'menu.manage'],
-        ['categories.index', 'categories.*', '📂', 'Categories', 'menu.manage'],
-        ['stock-movements.index', 'stock-movements.*', '📦', 'Inventory', 'inventory.manage'],
-        ['customers.index', 'customers.*', '🙋', 'Customers', 'customers.manage'],
-        ['users.index', 'users.*', '👥', 'Staff', 'users.manage'],
-        ['roles.index', 'roles.*', '🔐', 'Roles', 'roles.manage'],
-        ['reports.index', 'reports.*', '📈', 'Reports', 'reports.view'],
-    ];
+// [route, active pattern, icon, label, permission]
+$navigation = [
+['dashboard', 'dashboard', '📊', 'Dashboard', 'dashboard.view'],
+['sales.index', 'sales.*', '🧾', 'Orders', 'orders.view'],
+['kitchen.index', 'kitchen.*', '👨‍🍳', 'Kitchen', 'kitchen.manage'],
+['tables.index', 'tables.*', '🪑', 'Tables', 'tables.manage'],
+['products.index', 'products.*', '🍔', 'Products', 'menu.manage'],
+['categories.index', 'categories.*', '📂', 'Categories', 'menu.manage'],
+['stock-movements.index', 'stock-movements.*', '📦', 'Inventory', 'inventory.manage'],
+['customers.index', 'customers.*', '🙋', 'Customers', 'customers.manage'],
+['users.index', 'users.*', '👥', 'Staff', 'users.manage'],
+['roles.index', 'roles.*', '🔐', 'Roles', 'roles.manage'],
+['reports.index', 'reports.*', '📈', 'Reports', 'reports.view'],
+];
 @endphp
 
 <body class="bg-gray-100 text-gray-900">
@@ -48,16 +48,16 @@
             {{-- Navigation --}}
             <nav class="mt-6 space-y-1 px-3">
                 @foreach ($navigation as [$route, $pattern, $icon, $label, $permission])
-                    @can($permission)
-                        <a href="{{ route($route) }}"
-                           class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition duration-200
+                @can($permission)
+                <a href="{{ route($route) }}" class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition duration-200
                            {{ request()->routeIs($pattern)
                                 ? 'bg-white text-gray-900 shadow-sm'
                                 : 'text-gray-300 hover:bg-gray-800 hover:text-white' }}">
-                            <span class="text-lg">{{ $icon }}</span>
-                            <span>{{ $label }}</span>
-                        </a>
-                    @endcan
+                    <span class="text-lg">{{ $icon }}</span>
+                    <span>{{ $label }}</span>
+                </a>
+                @endcan
+                @endforeach
                 @endforeach
             </nav>
 
@@ -112,11 +112,11 @@
 
                 {{-- Flash messages --}}
                 @if (session('success'))
-                    <x-alert type="success">{{ session('success') }}</x-alert>
+                <x-alert type="success">{{ session('success') }}</x-alert>
                 @endif
 
                 @if (session('error'))
-                    <x-alert type="error">{{ session('error') }}</x-alert>
+                <x-alert type="error">{{ session('error') }}</x-alert>
                 @endif
 
                 {{ $slot }}
@@ -129,13 +129,12 @@
         Confirmation dialog for any form with data-confirm="message".
         Optional: data-confirm-title, data-confirm-button.
     --}}
-    <dialog id="confirmDialog"
-            class="w-full max-w-md rounded-2xl p-0 shadow-2xl backdrop:bg-gray-900/50 backdrop:backdrop-blur-sm">
+    <dialog id="confirmDialog" class="w-full max-w-md rounded-2xl p-0 shadow-2xl backdrop:bg-gray-900/50 backdrop:backdrop-blur-sm">
         <div class="p-6">
             <div class="flex items-start gap-4">
                 <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600">
                     <svg class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fill-rule="evenodd" d="M8.3 2.9a2 2 0 0 1 3.4 0l6.3 11A2 2 0 0 1 16.3 17H3.7A2 2 0 0 1 2 13.9l6.3-11ZM10 7a1 1 0 0 0-1 1v3a1 1 0 1 0 2 0V8a1 1 0 0 0-1-1Zm0 8a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd"/>
+                        <path fill-rule="evenodd" d="M8.3 2.9a2 2 0 0 1 3.4 0l6.3 11A2 2 0 0 1 16.3 17H3.7A2 2 0 0 1 2 13.9l6.3-11ZM10 7a1 1 0 0 0-1 1v3a1 1 0 1 0 2 0V8a1 1 0 0 0-1-1Zm0 8a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
                     </svg>
                 </div>
                 <div class="pt-1">
@@ -146,12 +145,10 @@
         </div>
 
         <div class="flex justify-end gap-3 rounded-b-2xl bg-gray-50 px-6 py-4">
-            <button type="button" data-confirm-cancel
-                    class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+            <button type="button" data-confirm-cancel class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
                 Keep it
             </button>
-            <button type="button" data-confirm-ok
-                    class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+            <button type="button" data-confirm-ok class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
             </button>
         </div>
     </dialog>
@@ -166,7 +163,7 @@
                     setTimeout(() => alert.remove(), 300);
                 };
 
-                alert.querySelector('[data-alert-close]')?.addEventListener('click', dismiss);
+                alert.querySelector('[data-alert-close]') ? .addEventListener('click', dismiss);
 
                 const delay = Number(alert.dataset.autoDismiss);
                 const bar = alert.querySelector('[data-alert-progress]');
@@ -210,7 +207,7 @@
 
             okButton.addEventListener('click', () => {
                 okButton.disabled = true;
-                pendingForm?.submit();
+                pendingForm ? .submit();
             });
 
             dialog.querySelector('[data-confirm-cancel]').addEventListener('click', () => dialog.close());
@@ -225,6 +222,7 @@
                 okButton.disabled = false;
             });
         })();
+
     </script>
 
     @stack('scripts')
